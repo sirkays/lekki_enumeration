@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Property Visualization — Lekki LCDA</title>
+
+  <!-- Tailwind v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-ink:    #080c18;
+      --color-surface: #0d1425;
+      --color-panel:  #111827;
+      --color-card:   #0f1c35;
+      --color-border: #1e2d4f;
+      --color-border-bright: #2a3f6f;
+      --color-amber:  #f59e0b;
+      --color-amber-dim: #b45309;
+      --color-green:  #10b981;
+      --color-red:    #ef4444;
+      --color-text:   #e2e8f0;
+      --color-muted:  #64748b;
+      --font-display: 'Outfit', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+    }
+    * { font-family: var(--font-display); box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--color-ink); color: var(--color-text); }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--color-panel); }
+    ::-webkit-scrollbar-thumb { background: var(--color-border-bright); border-radius: 3px; }
+
+    /* Leaflet override */
+    .leaflet-container { background: #0a1628 !important; }
+    .leaflet-popup-content-wrapper {
+      background: var(--color-card) !important;
+      border: 1px solid var(--color-border-bright) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+      padding: 0 !important;
+      min-width: 320px;
+      max-width: 380px;
+    }
+    .leaflet-popup-content { margin: 0 !important; width: 100% !important; }
+    .leaflet-popup-tip { background: var(--color-card) !important; }
+    .leaflet-popup-close-button {
+      color: var(--color-muted) !important;
+      top: 10px !important;
+      right: 12px !important;
+      font-size: 18px !important;
+      z-index: 10;
+    }
+    .leaflet-control-zoom a {
+      background: var(--color-card) !important;
+      color: var(--color-text) !important;
+      border-color: var(--color-border) !important;
+    }
+    .leaflet-control-zoom a:hover { background: var(--color-border) !important; }
+    .leaflet-bar { border: 1px solid var(--color-border) !important; }
+
+    /* Sidebar */
+    #sidebar {
+      width: 320px;
+      flex-shrink: 0;
+      background: var(--color-surface);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width 0.3s ease, opacity 0.3s ease;
+    }
+    #sidebar.collapsed { width: 0; opacity: 0; pointer-events: none; }
+
+    /* Input fields */
+    .filter-input {
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      font-size: 0.8rem;
+      border-radius: 10px;
+      padding: 8px 12px;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    .filter-input:focus { outline: none; border-color: var(--color-amber); }
+    .filter-input::placeholder { color: var(--color-muted); }
+
+    /* Status pill */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .pill-green { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .pill-red   { background: rgba(239,68,68,0.15);  color: #ef4444;  border: 1px solid rgba(239,68,68,0.3); }
+
+    /* Stat cards */
+    .stat-card {
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--color-border);
+      background: var(--color-card);
+    }
+
+    /* Tab buttons */
+    .view-tab {
+      flex: 1;
+      padding: 9px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .view-tab.active {
+      background: var(--color-amber);
+      color: #000;
+    }
+    .view-tab:not(.active) {
+      background: transparent;
+      color: var(--color-muted);
+    }
+    .view-tab:not(.active):hover { color: var(--color-text); background: var(--color-border); }
+
+    /* Progress bar */
+    .progress-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--color-border);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.8s ease;
+    }
+
+    /* Property popup */
+    .popup-image { width: 100%; height: 180px; object-fit: cover; border-radius: 12px 12px 0 0; }
+    .popup-slide { display: none; }
+    .popup-slide.active { display: block; }
+
+    /* Loading overlay */
+    #loadingOverlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8,12,24,0.8);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: inherit;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-amber);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* Full screen map */
+    #mainContent.fullscreen #sidebar { width: 0; opacity: 0; pointer-events: none; }
+    #mainContent.fullscreen #topBar { display: none; }
+    #fullscreenMapToggle { position: absolute; bottom: 24px; right: 16px; z-index: 999; }
+
+    /* Slide indicator dots */
+    .slide-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .slide-dot.active { background: var(--color-amber); }
+
+    /* Chart tabs */
+    .chart-tab {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .chart-tab.active { background: var(--color-amber); color: #000; }
+    .chart-tab:not(.active) { color: var(--color-muted); border-color: var(--color-border); }
+    .chart-tab:not(.active):hover { color: var(--color-text); }
+
+    /* Notification toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--color-card);
+      border: 1px solid var(--color-border-bright);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 0.8rem;
+      z-index: 9999;
+      transition: transform 0.3s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Mobile sidebar overlay */
+    #sidebarOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 40;
+    }
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed;
+        left: 0; top: 0; bottom: 0;
+        z-index: 50;
+        width: 300px !important;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+      }
+      #sidebar.mobile-open {
+        transform: translateX(0);
+      }
+      #sidebarOverlay { display: block; }
+      #sidebarOverlay.visible { display: block; }
+    }
+
+    .mono { font-family: var(--font-mono); }
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<!-- Mobile sidebar overlay -->
+<div id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
+<!-- ======================================================= -->
+<!--  APP LAYOUT                                             -->
+<!-- ======================================================= -->
+<div id="mainContent" style="display:flex;flex-direction:column;height:100vh;">
+
+  <!-- ---- TOP BAR ---- -->
+  <div id="topBar" style="height:56px;flex-shrink:0;background:var(--color-surface);border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px;padding:0 16px;z-index:100;">
+
+    <!-- Logo / mobile menu toggle -->
+    <button onclick="toggleMobileSidebar()" class="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl"
+            style="background:var(--color-panel);border:1px solid var(--color-border);">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+
+    <!-- Brand -->
+    <div class="flex items-center gap-2.5 flex-shrink-0">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+           style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#000" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+        </svg>
+      </div>
+      <span class="font-bold text-sm hidden sm:block" style="color:var(--color-text);">Lekki Property Intel</span>
+    </div>
+
+    <!-- Search bar -->
+    <div class="flex-1 relative max-w-md">
+      <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <svg class="w-3.5 h-3.5" style="color:var(--color-muted);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <input type="text" id="searchInput" placeholder="Search property ID, owner, street, business…"
+             class="filter-input pl-9 pr-8"
+             style="border-radius:10px;"
+             oninput="debounceSearch(this.value)" />
+      <button id="clearSearch" onclick="clearSearchInput()"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 hidden"
+              style="color:var(--color-muted);">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Year selector -->
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <span class="section-label hidden sm:block">Year</span>
+      <select id="yearSelector" onchange="onYearChange(this.value)"
+              class="filter-input" style="width:90px;padding:7px 10px;">
+        {% for y in available_years %}
+        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- View toggle -->
+    <div class="flex-shrink-0 flex items-center gap-1 p-1 rounded-xl"
+         style="background:var(--color-panel);border:1px solid var(--color-border);">
+      <button class="view-tab active" id="tabMap" onclick="switchView('map')">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+        </svg>
+        <span class="hidden sm:block">Map</span>
+      </button>
+      <button class="view-tab" id="tabChart" onclick="switchView('chart')">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        <span class="hidden sm:block">Charts</span>
+      </button>
+    </div>
+
+    <!-- User avatar -->
+    <div class="flex-shrink-0 flex items-center gap-2">
+      <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold"
+           style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;">
+        {{ profile.user.user_id|first|upper }}
+      </div>
+      <a href="{% url 'visualization:user_logout' %}"
+         class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+         style="color:var(--color-muted);border:1px solid var(--color-border);"
+         onmouseover="this.style.color='var(--color-text)'"
+         onmouseout="this.style.color='var(--color-muted)'">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        Logout
+      </a>
+    </div>
+  </div>
+
+  <!-- ---- BODY (sidebar + content) ---- -->
+  <div style="flex:1;display:flex;overflow:hidden;position:relative;">
+
+    <!-- ========= SIDEBAR ========= -->
+    <div id="sidebar">
+      <div style="flex:1;overflow-y:auto;padding:16px;">
+
+        <!-- Stats row -->
+        <div class="grid grid-cols-3 gap-2 mb-5">
+          <div class="stat-card text-center">
+            <div class="text-lg font-bold mono" style="color:var(--color-text);" id="statTotal">{{ total_properties }}</div>
+            <div class="section-label mt-0.5">Total</div>
+          </div>
+          <div class="stat-card text-center" style="border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.06);">
+            <div class="text-lg font-bold mono" style="color:#10b981;" id="statBilled">{{ billed_count }}</div>
+            <div class="section-label mt-0.5">Billed</div>
+          </div>
+          <div class="stat-card text-center" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.06);">
+            <div class="text-lg font-bold mono" style="color:#ef4444;" id="statUnbilled">{{ unbilled_count }}</div>
+            <div class="section-label mt-0.5">Unbilled</div>
+          </div>
+        </div>
+
+        <!-- Coverage progress -->
+        <div class="mb-5 p-3 rounded-xl" style="background:var(--color-card);border:1px solid var(--color-border);">
+          <div class="flex justify-between items-center mb-2">
+            <span class="section-label">Bill Coverage</span>
+            <span class="mono text-sm font-bold" style="color:var(--color-amber);" id="coveragePct">{{ billed_percentage }}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="coverageBar"
+                 style="width:{{ billed_percentage }}%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+          </div>
+        </div>
+
+        <!-- FILTERS SECTION -->
+        <div class="mb-2 flex items-center justify-between">
+          <span class="section-label">Filters</span>
+          <button onclick="resetFilters()" class="text-xs font-medium transition-colors"
+                  style="color:var(--color-amber);"
+                  onmouseover="this.style.opacity='0.7'"
+                  onmouseout="this.style.opacity='1'">Reset All</button>
+        </div>
+
+        <!-- Status filter -->
+        <div class="mb-3">
+          <label class="section-label block mb-1.5">Bill Status</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button class="status-btn active-btn py-2 rounded-lg text-xs font-semibold transition-all"
+                    style="background:var(--color-amber);color:#000;" data-val=""
+                    onclick="setStatusFilter(this, '')">All</button>
+            <button class="status-btn py-2 rounded-lg text-xs font-semibold transition-all"
+                    style="background:var(--color-panel);border:1px solid rgba(16,185,129,0.3);color:#10b981;"
+                    data-val="billed" onclick="setStatusFilter(this, 'billed')">Billed</button>
+            <button class="status-btn py-2 rounded-lg text-xs font-semibold transition-all"
+                    style="background:var(--color-panel);border:1px solid rgba(239,68,68,0.3);color:#ef4444;"
+                    data-val="unbilled" onclick="setStatusFilter(this, 'unbilled')">Unbilled</button>
+          </div>
+        </div>
+
+        <!-- Property type -->
+        <div class="mb-3">
+          <label class="section-label block mb-1.5">Property Type</label>
+          <select id="filterType" class="filter-input" onchange="applyFilters()">
+            <option value="">All Types</option>
+            {% for pt in property_types %}
+            <option value="{{ pt }}">{{ pt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Revenue category -->
+        <div class="mb-3">
+          <label class="section-label block mb-1.5">Revenue Category</label>
+          <select id="filterRevenue" class="filter-input" onchange="applyFilters()">
+            <option value="">All Categories</option>
+            {% for rc in revenue_categories %}
+            <option value="{{ rc }}">{{ rc }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Street name -->
+        <div class="mb-3">
+          <label class="section-label block mb-1.5">Street Name</label>
+          <input type="text" id="filterStreet" list="streetList"
+                 placeholder="Type to filter streets…"
+                 class="filter-input" oninput="applyFilters()" />
+          <datalist id="streetList">
+            {% for s in street_names %}
+            <option value="{{ s }}">
+            {% endfor %}
+          </datalist>
+        </div>
+
+        <!-- Floors range -->
+        <div class="mb-3">
+          <label class="section-label block mb-1.5">No. of Floors (Max)</label>
+          <div class="flex items-center gap-3">
+            <input type="range" id="filterFloors" min="0" max="20" value="20"
+                   class="flex-1 accent-amber-500" oninput="updateFloorLabel(this.value); applyFilters()" />
+            <span id="floorLabel" class="mono text-xs w-8 text-right" style="color:var(--color-amber);">Any</span>
+          </div>
+        </div>
+
+        <!-- Completeness -->
+        <div class="mb-5">
+          <label class="section-label block mb-1.5">Completeness Status</label>
+          <select id="filterCompleteness" class="filter-input" onchange="applyFilters()">
+            <option value="">All</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+            <option value="partial">Partial</option>
+          </select>
+        </div>
+
+        <!-- Active filter chips -->
+        <div id="activeFilters" class="flex flex-wrap gap-1.5 mb-4 hidden">
+          <span class="section-label w-full">Active:</span>
+        </div>
+
+        <!-- Results count -->
+        <div class="p-3 rounded-xl" style="background:var(--color-card);border:1px solid var(--color-border);">
+          <div class="flex items-center justify-between">
+            <span class="text-xs" style="color:var(--color-muted);">Showing</span>
+            <span class="mono text-sm font-bold" id="resultCount" style="color:var(--color-amber);">—</span>
+          </div>
+          <div class="text-xs mt-0.5" style="color:var(--color-muted);" id="resultDetail">Loading properties…</div>
+        </div>
+
+      </div>
+
+      <!-- Sidebar footer -->
+      <div style="padding:12px 16px;border-top:1px solid var(--color-border);flex-shrink:0;">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-3 h-3 rounded-full" style="background:#10b981;box-shadow:0 0 6px #10b981;"></div>
+          <span class="text-xs" style="color:var(--color-muted);">Bill uploaded · <span style="color:#10b981;">Billed</span></span>
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-3 h-3 rounded-full" style="background:#ef4444;box-shadow:0 0 6px #ef4444;"></div>
+          <span class="text-xs" style="color:var(--color-muted);">No bill · <span style="color:#ef4444;">Unbilled</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full" style="background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></div>
+          <span class="text-xs" style="color:var(--color-muted);">No revenue category · <span style="color:#38bdf8;">Uncategorised</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= MAP VIEW ========= -->
+    <div id="mapView" style="flex:1;position:relative;overflow:hidden;">
+      <div id="map" style="width:100%;height:100%;"></div>
+
+      <!-- Loading overlay -->
+      <div id="loadingOverlay" style="position:absolute;inset:0;background:rgba(8,12,24,0.75);z-index:800;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+        <div class="spinner"></div>
+        <span class="text-sm" style="color:var(--color-muted);">Loading properties…</span>
+      </div>
+
+      <!-- Fullscreen toggle -->
+      <button id="fullscreenBtn" onclick="toggleFullscreen()"
+              style="position:absolute;bottom:80px;right:12px;z-index:500;background:var(--color-card);border:1px solid var(--color-border);border-radius:10px;padding:8px 10px;color:var(--color-text);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:600;transition:all 0.2s;"
+              onmouseover="this.style.borderColor='var(--color-amber)'"
+              onmouseout="this.style.borderColor='var(--color-border)'">
+        <svg id="fullscreenIcon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+        </svg>
+        <span id="fullscreenLabel" class="hidden sm:block">Full Screen</span>
+      </button>
+
+      <!-- Sidebar toggle btn -->
+      <button onclick="toggleSidebar()"
+              style="position:absolute;top:12px;left:12px;z-index:500;background:var(--color-card);border:1px solid var(--color-border);border-radius:10px;padding:8px 10px;color:var(--color-text);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:600;transition:all 0.2s;"
+              onmouseover="this.style.borderColor='var(--color-amber)'"
+              onmouseout="this.style.borderColor='var(--color-border)'"
+              class="hidden lg:flex">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h8m-8 6h16"/>
+        </svg>
+      </button>
+
+      <!-- Mini legend (map overlay) -->
+      <div style="position:absolute;bottom:80px;left:12px;z-index:500;background:var(--color-card);border:1px solid var(--color-border);border-radius:12px;padding:10px 14px;">
+        <div class="section-label mb-2" id="mapYear">{{ selected_year }}</div>
+        <div class="flex items-center gap-2 mb-1.5">
+          <div style="width:10px;height:10px;border-radius:50%;background:#10b981;box-shadow:0 0 5px #10b981;flex-shrink:0;"></div>
+          <span style="font-size:0.7rem;color:var(--color-muted);">Bill Uploaded</span>
+        </div>
+        <div class="flex items-center gap-2 mb-1.5">
+          <div style="width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 5px #ef4444;flex-shrink:0;"></div>
+          <span style="font-size:0.7rem;color:var(--color-muted);">No Bill</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div style="width:10px;height:10px;border-radius:50%;background:#38bdf8;box-shadow:0 0 5px #38bdf8;flex-shrink:0;"></div>
+          <span style="font-size:0.7rem;color:var(--color-muted);">No Category</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= CHART VIEW ========= -->
+    <div id="chartView" style="flex:1;display:none;overflow-y:auto;padding:24px;">
+
+      <!-- Chart header -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-xl font-bold">Analytics Overview</h2>
+          <p class="text-sm mt-0.5" style="color:var(--color-muted);">Bill distribution analysis · <span id="chartYear">{{ selected_year }}</span></p>
+        </div>
+        <div class="flex gap-2">
+          <button class="chart-tab active" onclick="switchChart('category', this)">By Category</button>
+          <button class="chart-tab" onclick="switchChart('type', this)">By Type</button>
+          <button class="chart-tab" onclick="switchChart('trend', this)">Trend</button>
+        </div>
+      </div>
+
+      <!-- Summary cards row -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="stat-card">
+          <div class="section-label mb-1">Total Properties</div>
+          <div class="text-2xl font-bold mono" id="cStatTotal">{{ total_properties }}</div>
+          <div class="text-xs mt-1" style="color:var(--color-muted);">With GPS coordinates</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(16,185,129,0.3);">
+          <div class="section-label mb-1">Bills Uploaded</div>
+          <div class="text-2xl font-bold mono" style="color:#10b981;" id="cStatBilled">{{ billed_count }}</div>
+          <div class="text-xs mt-1" style="color:var(--color-muted);">For {{ selected_year }}</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(239,68,68,0.3);">
+          <div class="section-label mb-1">Pending Bills</div>
+          <div class="text-2xl font-bold mono" style="color:#ef4444;" id="cStatUnbilled">{{ unbilled_count }}</div>
+          <div class="text-xs mt-1" style="color:var(--color-muted);">Need attention</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(245,158,11,0.3);">
+          <div class="section-label mb-1">Coverage Rate</div>
+          <div class="text-2xl font-bold mono" style="color:#f59e0b;" id="cStatPct">{{ billed_percentage }}%</div>
+          <div class="text-xs mt-1" style="color:var(--color-muted);">Of all properties</div>
+        </div>
+      </div>
+
+      <!-- Chart area -->
+      <div class="rounded-2xl p-6" style="background:var(--color-card);border:1px solid var(--color-border);">
+        <div id="chartLoadingState" class="flex items-center justify-center h-64 gap-3">
+          <div class="spinner" style="width:32px;height:32px;"></div>
+          <span style="color:var(--color-muted);font-size:0.85rem;">Loading chart data…</span>
+        </div>
+        <canvas id="mainChart" height="320" style="display:none;"></canvas>
+      </div>
+
+      <!-- Category breakdown table -->
+      <div id="categoryTable" class="mt-6 rounded-2xl overflow-hidden" style="border:1px solid var(--color-border);">
+        <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid var(--color-border);background:var(--color-panel);">
+          <h3 class="font-semibold text-sm">Category Breakdown</h3>
+          <span class="section-label" id="tableYear">{{ selected_year }}</span>
+        </div>
+        <div id="categoryTableBody" style="background:var(--color-card);">
+          <div class="flex items-center justify-center h-24" style="color:var(--color-muted);font-size:0.85rem;">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!--  PROPERTY POPUP MODAL (fullscreen image viewer)        -->
+<!-- ======================================================= -->
+<div id="imageModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9998;align-items:center;justify-content:center;">
+  <button onclick="closeImageModal()"
+          style="position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  <button onclick="prevModalSlide()"
+          style="position:absolute;left:16px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+  <img id="modalImage" src="" alt="" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:12px;"/>
+  <button onclick="nextModalSlide()"
+          style="position:absolute;right:16px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">›</button>
+  <div id="modalCaption" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.8rem;"></div>
+</div>
+
+<!-- ======================================================= -->
+<!--  JAVASCRIPT                                            -->
+<!-- ======================================================= -->
+<script>
+// ---- STATE ----
+const APP_STATE = {
+  currentView: 'map',
+  selectedYear: {{ selected_year }},
+  statusFilter: '',
+  searchQuery: '',
+  filterType: '',
+  filterRevenue: '',
+  filterStreet: '',
+  filterFloors: 20,
+  filterCompleteness: '',
+  isFullscreen: false,
+  sidebarOpen: true,
+  markers: [],
+  chartData: null,
+  currentChart: null,
+  activeChartTab: 'category',
+};
+
+let map;
+let markersLayer;
+let canvasRenderer;   // Fix 1: shared canvas – all circleMarkers draw on one <canvas> element
+let sharedPopup;      // Fix 2: single popup instance reused across every marker click
+let searchTimeout;
+let modalImages = [];
+let modalIdx = 0;
+
+// ---- URLS (Django reverse) ----
+const API_PROPERTIES = "{% url 'visualization:api_properties' %}";
+const API_CHART      = "{% url 'visualization:api_chart_data' %}";
+const MEDIA_URL      = "{{ request.scheme }}://{{ request.get_host }}/media/";
+
+// ======================================================= //
+//  MAP INITIALIZATION                                     //
+// ======================================================= //
+function initMap() {
+  map = L.map('map', {
+    center: [6.455, 3.487],
+    zoom: 14,
+    zoomControl: false,
+  });
+
+  // Satellite tile layer (Esri World Imagery – free, no API key)
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {
+      attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      maxZoom: 19,
+    }
+  ).addTo(map);
+
+  // Labels overlay on satellite
+  L.tileLayer(
+    'https://stamen-tiles.a.ssl.fastly.net/toner-hybrid/{z}/{x}/{y}.png',
+    { maxZoom: 18, opacity: 0.4 }
+  ).addTo(map);
+
+  // Zoom control – top right
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  // Fix 1: ONE canvas element renders all circleMarkers – eliminates per-marker DOM nodes
+  canvasRenderer = L.canvas({ padding: 0.5 });
+
+  // Fix 2: single shared popup – set content + latlng on each click, never re-bind
+  sharedPopup = L.popup({
+    maxWidth: 380,
+    minWidth: 320,
+    className: 'custom-popup',
+    autoPan: true,
+    autoPanPaddingTopLeft: L.point(20, 80),
+    autoPanPaddingBottomRight: L.point(20, 20),
+  });
+
+  // Layer group for markers
+  markersLayer = L.layerGroup().addTo(map);
+
+  // Load initial data
+  fetchAndRenderProperties();
+}
+
+// ======================================================= //
+//  FETCH PROPERTIES & RENDER MARKERS                     //
+// ======================================================= //
+function buildQueryString() {
+  const params = new URLSearchParams();
+  params.set('year', APP_STATE.selectedYear);
+  if (APP_STATE.statusFilter)     params.set('status', APP_STATE.statusFilter);
+  if (APP_STATE.searchQuery)      params.set('q', APP_STATE.searchQuery);
+  if (APP_STATE.filterType)       params.set('property_type', APP_STATE.filterType);
+  if (APP_STATE.filterRevenue)    params.set('revenue_category', APP_STATE.filterRevenue);
+  if (APP_STATE.filterStreet)     params.set('street_name', APP_STATE.filterStreet);
+  if (APP_STATE.filterCompleteness) params.set('completeness', APP_STATE.filterCompleteness);
+  return params.toString();
+}
+
+async function fetchAndRenderProperties() {
+  document.getElementById('loadingOverlay').style.display = 'flex';
+
+  try {
+    const res = await fetch(`${API_PROPERTIES}?${buildQueryString()}`);
+    const geojson = await res.json();
+    renderMarkers(geojson);
+    updateSidebarStats(geojson.meta);
+    updateActiveFilterChips();
+  } catch (err) {
+    showToast('⚠ Failed to load properties. Check connection.', '#ef4444');
+  } finally {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }
+}
+
+function renderMarkers(geojson) {
+  markersLayer.clearLayers();
+  APP_STATE.markers = [];
+
+  geojson.features.forEach(feature => {
+    const { properties: p } = feature;
+    const [lng, lat] = feature.geometry.coordinates;
+    const isBilled = p.is_billed;
+    const hasCategory = p.revenue_category && p.revenue_category.trim() !== '';
+    // Light blue when revenue_category is absent, otherwise green/red for bill status
+    const color = !hasCategory ? '#38bdf8' : (isBilled ? '#10b981' : '#ef4444');
+
+    // Fix 1: L.circleMarker + shared canvas renderer.
+    // All 7000+ points share ONE <canvas> element instead of 7000 individual DOM nodes.
+    // circleMarker radius is in px (fixed screen size, not geographic).
+    const marker = L.circleMarker([lat, lng], {
+      renderer: canvasRenderer,
+      radius: 5,
+      fillColor: color,
+      fillOpacity: 0.92,
+      color: 'rgba(255,255,255,0.7)',  // white stroke
+      weight: 1.5,
+      opacity: 1,
+    });
+
+    // Fix 2: stop propagation so the map's click-to-close fires BEFORE our handler,
+    // not after. We then open the shared popup explicitly with openOn(map).
+    marker.on('click', (e) => {
+      L.DomEvent.stopPropagation(e);
+      openPropertyPopup(p, e.latlng);
+    });
+
+    // Hover: grow radius for feedback (canvas renderer supports setStyle efficiently)
+    marker.on('mouseover', () => marker.setStyle({ radius: 8, weight: 2 }));
+    marker.on('mouseout',  () => marker.setStyle({ radius: 5, weight: 1.5 }));
+
+    markersLayer.addLayer(marker);
+    APP_STATE.markers.push(marker);
+  });
+}
+
+// ======================================================= //
+//  PROPERTY POPUP                                        //
+// ======================================================= //
+function openPropertyPopup(p, latlng) {
+  // Collect images
+  const imageSlots = [
+    { url: p.photo_front,   label: 'Front View' },
+    { url: p.photo_gate,    label: 'Gate View' },
+    { url: p.photo_signage, label: 'Signage' },
+    { url: p.photo_street,  label: 'Street View' },
+    { url: p.bill_image_url, label: 'Bill Image' },
+  ].filter(img => img.url && img.url.trim());
+
+  modalImages = imageSlots;
+
+  let slidesHTML = '';
+  if (imageSlots.length > 0) {
+    slidesHTML = `
+      <div style="position:relative;">
+        <div id="slideContainer" style="position:relative;height:200px;overflow:hidden;border-radius:16px 16px 0 0;">
+          ${imageSlots.map((img, i) => `
+            <div class="popup-slide ${i === 0 ? 'active' : ''}" data-idx="${i}"
+                 style="position:absolute;inset:0;${i > 0 ? 'opacity:0;pointer-events:none;' : ''}transition:opacity 0.3s;">
+              <img src="${img.url.startsWith('http') ? img.url : MEDIA_URL + img.url}"
+                   alt="${img.label}"
+                   style="width:100%;height:200px;object-fit:cover;border-radius:16px 16px 0 0;cursor:pointer;"
+                   onclick="openImageModal(${i})" />
+            </div>
+          `).join('')}
+        </div>
+        <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);border-radius:20px;padding:3px 10px;">
+          <span id="slideLabel" style="font-size:0.65rem;color:#fff;font-weight:600;">${imageSlots[0].label}</span>
+        </div>
+        <button onclick="prevSlide(event)" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.6);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">‹</button>
+        <button onclick="nextSlide(event)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.6);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">›</button>
+        <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;" id="slideDots">
+          ${imageSlots.map((_, i) => `<div class="slide-dot ${i === 0 ? 'active' : ''}" data-idx="${i}" onclick="goToSlide(event, ${i})"></div>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    slidesHTML = `
+      <div style="height:120px;display:flex;align-items:center;justify-content:center;background:var(--color-panel);border-radius:16px 16px 0 0;">
+        <div style="text-align:center;">
+          <svg style="width:32px;height:32px;color:var(--color-muted);margin:0 auto 8px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <p style="font-size:0.7rem;color:var(--color-muted);">No photos available</p>
+        </div>
+      </div>`;
+  }
+
+  const statusBadge = p.is_billed
+    ? `<span class="pill pill-green"><span style="width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0;"></span>Billed</span>`
+    : `<span class="pill pill-red"><span style="width:6px;height:6px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>Unbilled</span>`;
+
+  function row(label, value) {
+    if (!value) return '';
+    return `<tr>
+      <td style="padding:5px 8px;color:var(--color-muted);font-size:0.7rem;white-space:nowrap;font-weight:500;">${label}</td>
+      <td style="padding:5px 8px;font-size:0.75rem;font-weight:500;color:var(--color-text);">${value}</td>
+    </tr>`;
+  }
+
+  const content = `
+    <div style="font-family:'Outfit',sans-serif;">
+      ${slidesHTML}
+      <div style="padding:14px 16px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:0.65rem;color:var(--color-muted);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px;">Property ID</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.9rem;font-weight:700;color:var(--color-amber);">${p.property_id || '—'}</div>
+          </div>
+          ${statusBadge}
+        </div>
+        ${p.is_billed && p.bill_date ? `<div style="margin-bottom:10px;padding:7px 10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);">
+          <span style="font-size:0.7rem;color:#10b981;font-weight:600;">✓ Bill captured: ${p.bill_date}</span>
+        </div>` : ''}
+        <table style="width:100%;border-collapse:collapse;">
+          ${row('Street', p.street_name)}
+          ${row('House No.', p.assigned_house_number || p.confirmed_house_number || p.house_number)}
+          ${row('Owner', p.owner_name)}
+          ${row('Phone', p.owner_phone)}
+          ${row('Email', p.owner_email)}
+          ${row('Property Type', p.property_type)}
+          ${row('Business Type', p.business_type)}
+          ${row('Revenue Cat.', p.revenue_category)}
+          ${row('Floors', p.no_of_floors)}
+          ${row('Units', p.no_of_units)}
+          ${row('Enumerated', p.enumeration_date)}
+          ${row('Business', [p.business_name_1, p.business_name_2].filter(Boolean).join(', '))}
+          ${row('Contact', p.contact_name ? `${p.contact_name} · ${p.contact_phone||''}` : null)}
+          ${row('Completeness', p.completeness_status)}
+        </table>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-border);display:flex;align-items:center;gap:4px;">
+          <svg style="width:11px;height:11px;color:var(--color-muted);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          </svg>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--color-muted);">${p.latitude?.toFixed(6)}, ${p.longitude?.toFixed(6)}</span>
+        </div>
+      </div>
+    </div>`;
+
+  // Store current slide index
+  window._currentSlide = 0;
+  window._slideCount = imageSlots.length;
+
+  // Fix 2: reuse the single sharedPopup instance.
+  // setContent + setLatLng + openOn(map) works reliably even if the popup
+  // was just closed by a map click – no stale binding, no race condition.
+  sharedPopup
+    .setContent(content)
+    .setLatLng(latlng)
+    .openOn(map);
+}
+
+let _currentSlide = 0;
+function prevSlide(e) {
+  e.stopPropagation();
+  const count = document.querySelectorAll('.popup-slide').length;
+  if (count === 0) return;
+  const next = (_currentSlide - 1 + count) % count;
+  goToSlide(e, next);
+}
+function nextSlide(e) {
+  e.stopPropagation();
+  const count = document.querySelectorAll('.popup-slide').length;
+  if (count === 0) return;
+  const next = (_currentSlide + 1) % count;
+  goToSlide(e, next);
+}
+function goToSlide(e, idx) {
+  if (e) e.stopPropagation();
+  const slides = document.querySelectorAll('.popup-slide');
+  const dots = document.querySelectorAll('.slide-dot');
+  const labelEl = document.getElementById('slideLabel');
+  slides.forEach((s, i) => {
+    if (i === idx) { s.style.opacity = '1'; s.style.pointerEvents = 'auto'; s.classList.add('active'); }
+    else { s.style.opacity = '0'; s.style.pointerEvents = 'none'; s.classList.remove('active'); }
+  });
+  dots.forEach((d, i) => {
+    d.style.background = i === idx ? '#f59e0b' : 'rgba(255,255,255,0.3)';
+  });
+  if (labelEl && modalImages[idx]) labelEl.textContent = modalImages[idx].label;
+  _currentSlide = idx;
+}
+
+// ======================================================= //
+//  IMAGE MODAL (full screen view)                        //
+// ======================================================= //
+function openImageModal(startIdx) {
+  modalIdx = startIdx;
+  const modal = document.getElementById('imageModal');
+  modal.style.display = 'flex';
+  updateModalImage();
+  document.addEventListener('keydown', handleModalKeys);
+}
+function closeImageModal() {
+  document.getElementById('imageModal').style.display = 'none';
+  document.removeEventListener('keydown', handleModalKeys);
+}
+function updateModalImage() {
+  const img = document.getElementById('modalImage');
+  const cap = document.getElementById('modalCaption');
+  const src = modalImages[modalIdx]?.url;
+  img.src = src?.startsWith('http') ? src : MEDIA_URL + src;
+  img.alt = modalImages[modalIdx]?.label || '';
+  cap.textContent = `${modalImages[modalIdx]?.label || ''} · ${modalIdx + 1} / ${modalImages.length}`;
+}
+function prevModalSlide() {
+  modalIdx = (modalIdx - 1 + modalImages.length) % modalImages.length;
+  updateModalImage();
+}
+function nextModalSlide() {
+  modalIdx = (modalIdx + 1) % modalImages.length;
+  updateModalImage();
+}
+function handleModalKeys(e) {
+  if (e.key === 'ArrowLeft') prevModalSlide();
+  if (e.key === 'ArrowRight') nextModalSlide();
+  if (e.key === 'Escape') closeImageModal();
+}
+
+// ======================================================= //
+//  VIEW SWITCHING (Map / Chart)                          //
+// ======================================================= //
+function switchView(view) {
+  APP_STATE.currentView = view;
+  const mapEl = document.getElementById('mapView');
+  const chartEl = document.getElementById('chartView');
+  const tabMap = document.getElementById('tabMap');
+  const tabChart = document.getElementById('tabChart');
+
+  if (view === 'map') {
+    mapEl.style.display = 'block';
+    chartEl.style.display = 'none';
+    tabMap.classList.add('active');
+    tabChart.classList.remove('active');
+    setTimeout(() => map.invalidateSize(), 50);
+  } else {
+    mapEl.style.display = 'none';
+    chartEl.style.display = 'block';
+    tabMap.classList.remove('active');
+    tabChart.classList.add('active');
+    fetchAndRenderCharts();
+  }
+}
+
+// ======================================================= //
+//  CHART RENDERING                                       //
+// ======================================================= //
+async function fetchAndRenderCharts() {
+  if (APP_STATE.chartData && APP_STATE.chartData._year === APP_STATE.selectedYear) {
+    renderChart(APP_STATE.activeChartTab);
+    return;
+  }
+
+  document.getElementById('chartLoadingState').style.display = 'flex';
+  document.getElementById('mainChart').style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_CHART}?year=${APP_STATE.selectedYear}`);
+    const data = await res.json();
+    data._year = APP_STATE.selectedYear;
+    APP_STATE.chartData = data;
+    renderChart(APP_STATE.activeChartTab);
+    renderCategoryTable(data.by_category);
+  } catch (err) {
+    showToast('⚠ Failed to load chart data.', '#ef4444');
+  }
+}
+
+function renderChart(type) {
+  document.getElementById('chartLoadingState').style.display = 'none';
+  const canvas = document.getElementById('mainChart');
+  canvas.style.display = 'block';
+
+  if (APP_STATE.currentChart) {
+    APP_STATE.currentChart.destroy();
+  }
+
+  const ctx = canvas.getContext('2d');
+  const data = APP_STATE.chartData;
+
+  const chartColors = {
+    green: 'rgba(16,185,129,0.8)',
+    red: 'rgba(239,68,68,0.75)',
+    blue: 'rgba(56,189,248,0.85)',   // light blue for no revenue_category
+    amber: 'rgba(245,158,11,0.85)',
+    gridColor: 'rgba(30,45,79,0.8)',
+    tickColor: '#64748b',
+  };
+
+  // Returns per-bar color array: light blue for null/empty labels, otherwise the default color
+  function barColors(items, defaultColor) {
+    return items.map(i => {
+      const isNone = !i.label || i.label.trim() === '' || i.label.toLowerCase() === 'none';
+      return isNone ? chartColors.blue : defaultColor;
+    });
+  }
+
+  Chart.defaults.color = chartColors.tickColor;
+  Chart.defaults.font.family = "'Outfit', sans-serif";
+
+  let config;
+  if (type === 'category' || type === 'type') {
+    const items = type === 'category' ? data.by_category : data.by_type;
+    config = {
+      type: 'bar',
+      data: {
+        labels: items.map(i => i.label || '(No Category)'),
+        datasets: [
+          { label: 'Billed',   data: items.map(i => i.billed),   backgroundColor: barColors(items, chartColors.green), borderRadius: 6, borderSkipped: false },
+          { label: 'Unbilled', data: items.map(i => i.unbilled),  backgroundColor: barColors(items, chartColors.red),   borderRadius: 6, borderSkipped: false },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', color: '#94a3b8' } },
+          tooltip: {
+            backgroundColor: '#0f1c35',
+            borderColor: '#1e2d4f',
+            borderWidth: 1,
+            padding: 12,
+            titleColor: '#e2e8f0',
+            bodyColor: '#94a3b8',
+            callbacks: {
+              footer: (items) => {
+                const total = items.reduce((s, i) => s + i.raw, 0);
+                const grandTotal = items[0]?.dataset?.data?.reduce((a,b) => a+b, 0) + items[1]?.dataset?.data?.reduce((a,b) => a+b, 0);
+                return `Total: ${items[0].parsed.x !== undefined ? '' : items.reduce((s,i)=>`${s}${i.dataset.label}: ${i.raw}\n`, '')}`;
+              }
+            }
+          },
+        },
+        scales: {
+          x: { stacked: false, grid: { color: chartColors.gridColor }, ticks: { maxRotation: 35, color: chartColors.tickColor, font: { size: 11 } } },
+          y: { stacked: false, grid: { color: chartColors.gridColor }, ticks: { color: chartColors.tickColor } },
+        },
+      },
+    };
+  } else if (type === 'trend') {
+    config = {
+      type: 'line',
+      data: {
+        labels: data.yearly_trend.map(i => i.year),
+        datasets: [{
+          label: 'Bills Uploaded',
+          data: data.yearly_trend.map(i => i.bills),
+          borderColor: chartColors.amber,
+          backgroundColor: 'rgba(245,158,11,0.12)',
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: chartColors.amber,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { color: '#94a3b8', usePointStyle: true } },
+          tooltip: { backgroundColor: '#0f1c35', borderColor: '#1e2d4f', borderWidth: 1, padding: 12, titleColor: '#e2e8f0', bodyColor: '#94a3b8' },
+        },
+        scales: {
+          x: { grid: { color: chartColors.gridColor }, ticks: { color: chartColors.tickColor } },
+          y: { grid: { color: chartColors.gridColor }, ticks: { color: chartColors.tickColor } },
+        },
+      },
+    };
+  }
+
+  APP_STATE.currentChart = new Chart(ctx, config);
+}
+
+function renderCategoryTable(categories) {
+  const body = document.getElementById('categoryTableBody');
+  if (!categories || categories.length === 0) {
+    body.innerHTML = `<div class="text-center py-6" style="color:var(--color-muted);font-size:0.85rem;">No data available</div>`;
+    return;
+  }
+
+  const rows = categories.map((cat, i) => {
+    const pct = cat.total > 0 ? Math.round(cat.billed / cat.total * 100) : 0;
+    const isEven = i % 2 === 0;
+    const isNone = !cat.label || cat.label.trim() === '' || cat.label.toLowerCase() === 'none';
+    const labelHTML = isNone
+      ? `<span style="display:inline-flex;align-items:center;gap:6px;">
+           <span style="width:8px;height:8px;border-radius:50%;background:#38bdf8;flex-shrink:0;box-shadow:0 0 5px #38bdf8;"></span>
+           <span style="color:#38bdf8;font-style:italic;">No Category</span>
+         </span>`
+      : cat.label;
+    return `
+      <div style="display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:12px;padding:11px 20px;background:${isEven ? 'transparent' : 'rgba(255,255,255,0.01)'};border-bottom:1px solid var(--color-border);">
+        <div style="font-size:0.8rem;font-weight:500;">${labelHTML}</div>
+        <div style="font-size:0.8rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:${isNone ? '#38bdf8' : '#10b981'};">${cat.billed}</div>
+        <div style="font-size:0.8rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:${isNone ? '#38bdf8' : '#ef4444'};">${cat.unbilled}</div>
+        <div style="min-width:60px;text-align:right;">
+          <span style="font-size:0.8rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:${isNone ? '#38bdf8' : (pct >= 75 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444')};">${pct}%</span>
+        </div>
+      </div>`;
+  });
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:12px;padding:8px 20px;border-bottom:1px solid var(--color-border);background:var(--color-panel);">
+      <div class="section-label">Category</div>
+      <div class="section-label">Billed</div>
+      <div class="section-label">Unbilled</div>
+      <div class="section-label" style="text-align:right;">Rate</div>
+    </div>
+    ${rows.join('')}`;
+}
+
+function switchChart(type, btn) {
+  APP_STATE.activeChartTab = type;
+  document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  if (APP_STATE.chartData) renderChart(type);
+}
+
+// ======================================================= //
+//  FILTER LOGIC                                          //
+// ======================================================= //
+function setStatusFilter(btn, val) {
+  APP_STATE.statusFilter = val;
+  document.querySelectorAll('.status-btn').forEach(b => {
+    b.style.background = 'var(--color-panel)';
+    b.style.color = 'var(--color-muted)';
+    b.style.border = '1px solid var(--color-border)';
+  });
+  btn.style.background = '#f59e0b';
+  btn.style.color = '#000';
+  btn.style.border = '1px solid #f59e0b';
+  applyFilters();
+}
+
+function applyFilters() {
+  APP_STATE.filterType         = document.getElementById('filterType').value;
+  APP_STATE.filterRevenue      = document.getElementById('filterRevenue').value;
+  APP_STATE.filterStreet       = document.getElementById('filterStreet').value;
+  APP_STATE.filterCompleteness = document.getElementById('filterCompleteness').value;
+  APP_STATE.filterFloors       = parseInt(document.getElementById('filterFloors').value) || 20;
+  if (APP_STATE.currentView === 'map') fetchAndRenderProperties();
+  else { APP_STATE.chartData = null; fetchAndRenderCharts(); }
+}
+
+function resetFilters() {
+  APP_STATE.statusFilter = '';
+  APP_STATE.filterType = '';
+  APP_STATE.filterRevenue = '';
+  APP_STATE.filterStreet = '';
+  APP_STATE.filterCompleteness = '';
+  APP_STATE.filterFloors = 20;
+  APP_STATE.searchQuery = '';
+  document.getElementById('filterType').value = '';
+  document.getElementById('filterRevenue').value = '';
+  document.getElementById('filterStreet').value = '';
+  document.getElementById('filterCompleteness').value = '';
+  document.getElementById('filterFloors').value = 20;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('floorLabel').textContent = 'Any';
+  document.getElementById('clearSearch').classList.add('hidden');
+  // Reset status buttons
+  document.querySelectorAll('.status-btn').forEach((b, i) => {
+    if (i === 0) { b.style.background = '#f59e0b'; b.style.color = '#000'; b.style.border = '1px solid #f59e0b'; }
+    else { b.style.background = 'var(--color-panel)'; b.style.color = 'var(--color-muted)'; b.style.border = '1px solid var(--color-border)'; }
+  });
+  applyFilters();
+  showToast('✓ Filters reset', '#10b981');
+}
+
+function updateFloorLabel(val) {
+  document.getElementById('floorLabel').textContent = parseInt(val) === 20 ? 'Any' : `≤${val}`;
+}
+
+function debounceSearch(val) {
+  APP_STATE.searchQuery = val;
+  const clearBtn = document.getElementById('clearSearch');
+  clearBtn.classList.toggle('hidden', !val);
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    if (APP_STATE.currentView === 'map') fetchAndRenderProperties();
+  }, 400);
+}
+
+function clearSearchInput() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('clearSearch').classList.add('hidden');
+  APP_STATE.searchQuery = '';
+  if (APP_STATE.currentView === 'map') fetchAndRenderProperties();
+}
+
+function updateActiveFilterChips() {
+  const container = document.getElementById('activeFilters');
+  const chips = [];
+  if (APP_STATE.statusFilter) chips.push({ label: `Status: ${APP_STATE.statusFilter}` });
+  if (APP_STATE.filterType)   chips.push({ label: `Type: ${APP_STATE.filterType}` });
+  if (APP_STATE.filterRevenue) chips.push({ label: `Cat: ${APP_STATE.filterRevenue}` });
+  if (APP_STATE.filterStreet)  chips.push({ label: `Street: ${APP_STATE.filterStreet}` });
+  if (APP_STATE.searchQuery)   chips.push({ label: `"${APP_STATE.searchQuery}"` });
+
+  if (chips.length === 0) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+  container.innerHTML = `<span class="section-label w-full mb-1">Active filters:</span>` +
+    chips.map(c => `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:0.65rem;font-weight:600;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);">${c.label}</span>`).join('');
+}
+
+function updateSidebarStats(meta) {
+  if (!meta) return;
+  document.getElementById('statTotal').textContent = meta.total?.toLocaleString() || '—';
+  document.getElementById('statBilled').textContent = meta.billed?.toLocaleString() || '—';
+  document.getElementById('statUnbilled').textContent = ((meta.total || 0) - (meta.billed || 0)).toLocaleString();
+  const pct = meta.total > 0 ? ((meta.billed / meta.total) * 100).toFixed(1) : 0;
+  document.getElementById('coveragePct').textContent = `${pct}%`;
+  document.getElementById('coverageBar').style.width = `${pct}%`;
+  document.getElementById('resultCount').textContent = `${meta.total?.toLocaleString()} properties`;
+  document.getElementById('resultDetail').textContent = `${meta.billed?.toLocaleString()} billed · ${((meta.total || 0) - (meta.billed || 0)).toLocaleString()} unbilled`;
+}
+
+// ======================================================= //
+//  YEAR CHANGE                                           //
+// ======================================================= //
+function onYearChange(year) {
+  APP_STATE.selectedYear = parseInt(year);
+  APP_STATE.chartData = null;
+  document.getElementById('mapYear').textContent = year;
+  document.getElementById('chartYear').textContent = year;
+  document.getElementById('tableYear').textContent = year;
+  if (APP_STATE.currentView === 'map') fetchAndRenderProperties();
+  else fetchAndRenderCharts();
+}
+
+// ======================================================= //
+//  FULLSCREEN TOGGLE                                     //
+// ======================================================= //
+function toggleFullscreen() {
+  APP_STATE.isFullscreen = !APP_STATE.isFullscreen;
+  const sidebar = document.getElementById('sidebar');
+  const topBar = document.getElementById('topBar');
+  const btn = document.getElementById('fullscreenBtn');
+  const icon = document.getElementById('fullscreenIcon');
+  const label = document.getElementById('fullscreenLabel');
+
+  if (APP_STATE.isFullscreen) {
+    sidebar.style.width = '0';
+    sidebar.style.opacity = '0';
+    sidebar.style.pointerEvents = 'none';
+    topBar.style.display = 'none';
+    icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>`;
+    if (label) label.textContent = 'Exit Full Screen';
+    btn.style.bottom = '24px';
+    btn.style.right = '16px';
+  } else {
+    sidebar.style.width = '320px';
+    sidebar.style.opacity = '1';
+    sidebar.style.pointerEvents = 'auto';
+    topBar.style.display = 'flex';
+    icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>`;
+    if (label) label.textContent = 'Full Screen';
+  }
+
+  setTimeout(() => map.invalidateSize(), 100);
+}
+
+// ======================================================= //
+//  SIDEBAR TOGGLE (desktop)                              //
+// ======================================================= //
+function toggleSidebar() {
+  APP_STATE.sidebarOpen = !APP_STATE.sidebarOpen;
+  const sidebar = document.getElementById('sidebar');
+  if (APP_STATE.sidebarOpen) {
+    sidebar.style.width = '320px';
+    sidebar.style.opacity = '1';
+    sidebar.style.pointerEvents = 'auto';
+  } else {
+    sidebar.style.width = '0';
+    sidebar.style.opacity = '0';
+    sidebar.style.pointerEvents = 'none';
+  }
+  setTimeout(() => map.invalidateSize(), 320);
+}
+
+// Mobile sidebar
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('visible');
+}
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarOverlay').classList.remove('visible');
+}
+
+// ======================================================= //
+//  TOAST NOTIFICATION                                    //
+// ======================================================= //
+function showToast(message, color) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.style.color = color || 'var(--color-text)';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+// ======================================================= //
+//  KEYBOARD SHORTCUTS                                    //
+// ======================================================= //
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
+    toggleFullscreen();
+  }
+  if (e.key === 'Escape' && APP_STATE.isFullscreen) {
+    APP_STATE.isFullscreen = true;
+    toggleFullscreen();
+  }
+});
+
+// ======================================================= //
+//  BOOT                                                  //
+// ======================================================= //
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+});
+</script>
+</body>
+</html>

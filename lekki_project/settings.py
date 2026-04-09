@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-key-change-me")
-DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+DEBUG = os.environ.get("DJANGO_DEBUG", "False")
 
 # Comma-separated: "yourapp.onrender.com,yourdomain.com"
 ALLOWED_HOSTS = [
@@ -30,7 +30,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core'
+    'core',
+    'authapp',
+    'visualization',
+    "rest_framework",
+    "rest_framework_api_key",
 ]
 
 MIDDLEWARE = [
@@ -43,12 +47,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+AUTH_USER_MODEL = 'authapp.CustomUser'
+
 ROOT_URLCONF = 'lekki_project.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -66,13 +72,9 @@ WSGI_APPLICATION = 'lekki_project.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-print( os.getenv('PRODUCTION_DB_ENGINE'))
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    },
-    'production_db': {
         'ENGINE': os.getenv('PRODUCTION_DB_ENGINE'),
         'NAME': os.getenv('PRODUCTION_DB_NAME'),
         'USER': os.getenv('PRODUCTION_DB_USER'),
@@ -86,7 +88,6 @@ DATABASES = {
     }
 
 }
-
 
 
 # Password validation
@@ -130,7 +131,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 
 # MEDIA (user uploads) -> Spaces
-USE_SPACES_FOR_MEDIA = True
+USE_SPACES_FOR_MEDIA = False
 
 if USE_SPACES_FOR_MEDIA:
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
@@ -162,6 +163,6 @@ if USE_SPACES_FOR_MEDIA:
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 else:
     # (Fallback: local)
-    MEDIA_URL = "/media/"
+    MEDIA_URL = "media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
