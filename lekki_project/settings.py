@@ -130,37 +130,35 @@ MEDIA_ROOT =  os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 
-# MEDIA (user uploads) -> Spaces
-USE_SPACES_FOR_MEDIA = False
+USE_SPACES_FOR_MEDIA = os.getenv("USE_SPACES_FOR_MEDIA", "False") == "True"
 
 if USE_SPACES_FOR_MEDIA:
+    AWS_LOCATION = 'lera'  # Everything goes into the 'lera/' folder
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "kslas")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "nyc3")  # <-- DO region
-    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "https://nyc3.digitaloceanspaces.com")
-
-    # Spaces / S3 options
-    AWS_S3_SIGNATURE_VERSION = "s3v4"
-    AWS_S3_ADDRESSING_STYLE = "virtual"  # bucket.nyc3.digitaloceanspaces.com
-    AWS_S3_FILE_OVERWRITE = False        # don't overwrite files with same name
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "nyc3")
+    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
+    
+    AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = "public-read"
-    AWS_QUERYSTRING_AUTH = False         # public URLs without ?X-Amz-...
-    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=31536000"}
-
-    # Custom domain for clean URLs:
+    AWS_QUERYSTRING_AUTH = False
+    
+    # URL construction
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.{AWS_S3_REGION_NAME}.digitaloceanspaces.com"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
 
-    #DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "location": AWS_LOCATION,
+            },
         },
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 else:
     # (Fallback: local)
     MEDIA_URL = "media/"
