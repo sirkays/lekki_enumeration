@@ -19,6 +19,35 @@ from .models import LekkiEnumeration, BillDistribution
 from .serializers import LekkiEnumerationSerializer, BillDistributionSerializer
 
 
+# ── Add this view to core/views.py ───────────────────────────────────────────
+
+@api_view(['GET'])
+@authentication_classes([SessionTokenAuthentication])
+@permission_classes([IsAuthenticated])
+def get_available_years(request):
+    """
+    Returns the list of years that have at least one BillDistribution record,
+    always including the current year even if no bills exist yet.
+
+    Response: { "years": [2026, 2025, 2024] }   (descending order)
+    """
+    from django.utils import timezone
+
+    current_year = timezone.now().year
+
+    years = list(
+        BillDistribution.objects
+        .values_list('year', flat=True)
+        .distinct()
+        .order_by('-year')
+    )
+
+    if current_year not in years:
+        years.insert(0, current_year)
+
+    return Response({'years': years})
+
+
 @api_view(['GET'])
 @authentication_classes([SessionTokenAuthentication])
 @permission_classes([IsAuthenticated])

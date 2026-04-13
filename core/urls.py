@@ -4,6 +4,8 @@ from . import views
 app_name = "core"
 
 urlpatterns = [
+    path('api/years/',      views.get_available_years, name='get_available_years'),
+    
     path("api/properties/",  views.get_properties,   name="get_properties"),
 
     path("api/capture/bill/",  views.capture_bill,   name="capture_bill"),
