@@ -24,6 +24,13 @@ from .serializers import LekkiEnumerationSerializer, BillDistributionSerializer
 @permission_classes([IsAuthenticated])
 def get_properties(request):
     search_query = request.query_params.get('search', '').strip()
+    year = request.query_params.get('year', None)
+
+    from django.utils import timezone
+    try:
+        year = int(year) if year else timezone.now().year
+    except (TypeError, ValueError):
+        year = timezone.now().year
 
     if search_query:
         properties = LekkiEnumeration.objects.filter(
@@ -41,9 +48,21 @@ def get_properties(request):
             longitude__isnull=False,
         )[:20]
 
-    serializer = LekkiEnumerationSerializer(properties, many=True)
-    return Response(serializer.data)
+    # Fetch all billed property IDs for the requested year in one query.
+    billed_ids = set(
+        BillDistribution.objects
+        .filter(year=year)
+        .values_list('property_id', flat=True)
+    )
 
+    serializer = LekkiEnumerationSerializer(properties, many=True)
+    data = serializer.data
+
+    # Stamp each property with is_billed without touching the serializer class.
+    for item in data:
+        item['is_billed'] = item.get('property_id') in billed_ids
+
+    return Response(data)
 
 @api_view(['POST'])
 @authentication_classes([SessionTokenAuthentication])
