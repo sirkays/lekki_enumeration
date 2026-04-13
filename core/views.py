@@ -120,7 +120,7 @@ def capture_bill(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    lekki_enum = get_object_or_404(LekkiEnumeration, id=lekki_enum_id)
+    lekki_enum = get_object_or_404(LekkiEnumeration, property_id=lekki_enum_id)
 
     if lekki_enum.property_id != property_id:
         return Response(
