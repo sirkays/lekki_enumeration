@@ -359,7 +359,11 @@
         <span class="hidden sm:block">Charts</span>
       </button>
     </div>
-
+  <button onclick="exportEnumeratedProperties()"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+          style="background:var(--color-amber);color:#000;border:1px solid var(--color-amber);">
+    Export Enum
+  </button>
     <!-- User avatar -->
     <div class="flex-shrink-0 flex items-center gap-2">
       <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold"
@@ -693,6 +697,12 @@ const API_PROPERTIES = "{% url 'visualization:api_properties' %}";
 const API_CHART      = "{% url 'visualization:api_chart_data' %}";
 const MEDIA_URL      = "{{ request.scheme }}://{{ request.get_host }}/media/";
 
+const EXPORT_PROPERTIES = "{% url 'visualization:export_properties_excel' %}";
+
+function exportEnumeratedProperties() {
+  const query = buildQueryString();
+  window.location.href = `${EXPORT_PROPERTIES}?${query}`;
+}
 // ======================================================= //
 //  MAP INITIALIZATION                                     //
 // ======================================================= //

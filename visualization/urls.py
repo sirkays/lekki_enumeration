@@ -11,4 +11,6 @@ urlpatterns = [
     path("api/chart-data/", views.api_chart_data, name="api_chart_data"),
 
     path("api/test-data/", views.test_set, name="test_set"),
+
+    path("export/properties/", views.export_properties_excel, name="export_properties_excel"),
 ]

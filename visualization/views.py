@@ -10,6 +10,10 @@ from django.db.models import Count, Q
 
 from core.models import LekkiEnumeration, BillDistribution
 
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,6 +35,211 @@ def _require_visualizer(request):
     return None
 
 
+def _filtered_lekki_queryset(request):
+    year = int(request.GET.get('year', datetime.now().year))
+    property_type = request.GET.get('property_type', '').strip()
+    revenue_category = request.GET.get('revenue_category', '').strip()
+    street_name = request.GET.get('street_name', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    search_query = request.GET.get('q', '').strip()
+    completeness = request.GET.get('completeness', '').strip()
+
+    qs = LekkiEnumeration.objects.exclude(
+        Q(latitude__isnull=True) | Q(longitude__isnull=True)
+    )
+
+    if property_type:
+        qs = qs.filter(property_type=property_type)
+
+    if revenue_category:
+        qs = qs.filter(revenue_category=revenue_category)
+
+    if street_name:
+        qs = qs.filter(street_name__icontains=street_name)
+
+    if completeness:
+        qs = qs.filter(completeness_status__iexact=completeness)
+
+    if search_query:
+        qs = qs.filter(
+            Q(owner_name__icontains=search_query) |
+            Q(property_id__icontains=search_query) |
+            Q(street_name__icontains=search_query) |
+            Q(house_number__icontains=search_query) |
+            Q(business_name_1__icontains=search_query)
+        )
+
+    billed_ids = set(
+        BillDistribution.objects.filter(year=year)
+        .values_list('property_id', flat=True)
+    )
+
+    if status_filter == 'billed':
+        qs = qs.filter(property_id__in=billed_ids)
+    elif status_filter == 'unbilled':
+        qs = qs.exclude(property_id__in=billed_ids)
+
+    return qs, billed_ids, year
+
+
+@login_required(login_url='visualization:user_login')
+def export_properties_excel(request):
+    error_response = _require_visualizer(request)
+    if error_response:
+        return HttpResponse('Unauthorized', status=403)
+
+    qs, billed_ids, year = _filtered_lekki_queryset(request)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Enumerated Properties"
+
+    headers = [
+        "Property ID",
+        "Street Name",
+        "House Number",
+        "Confirmed House Number",
+        "Assigned House Number",
+        "Property Type",
+        "Owner Name",
+        "Owner Phone",
+        "Owner Email",
+        "Owner Address",
+        "Business Type",
+        "Business Name 1",
+        "Business Name 2",
+        "Business Name 3",
+        "Business Name 4",
+        "No. of Floors",
+        "No. of Units",
+        "Revenue Category",
+        "Completeness Status",
+        "Bill Status",
+        "Enumeration Date",
+        "Latitude",
+        "Longitude",
+        "Area",
+        "Confidence",
+        "Full Plus Code",
+        "Contact Name",
+        "Contact Phone",
+        "Contact Email",
+        "Contact Address",
+        "Photo Front",
+        "Photo Gate",
+        "Photo Signage",
+        "Photo Street",
+        "Created At",
+    ]
+
+    ws.append(headers)
+
+    header_fill = PatternFill("solid", fgColor="F59E0B")
+    header_font = Font(bold=True, color="000000")
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+
+    fields = [
+        "property_id",
+        "street_name",
+        "house_number",
+        "confirmed_house_number",
+        "assigned_house_number",
+        "property_type",
+        "owner_name",
+        "owner_phone",
+        "owner_email",
+        "owner_address",
+        "business_type",
+        "business_name_1",
+        "business_name_2",
+        "business_name_3",
+        "business_name_4",
+        "no_of_floors",
+        "no_of_units",
+        "revenue_category",
+        "completeness_status",
+        "enumeration_date",
+        "latitude",
+        "longitude",
+        "area_in_me",
+        "confidence",
+        "full_plus_field",
+        "contact_name",
+        "contact_phone",
+        "contact_email",
+        "contact_address",
+        "photo_front",
+        "photo_gate",
+        "photo_signage",
+        "photo_street",
+        "created_at",
+    ]
+
+    for prop in qs.values(*fields).order_by("street_name", "property_id"):
+        row = [
+            prop.get("property_id"),
+            prop.get("street_name"),
+            prop.get("house_number"),
+            prop.get("confirmed_house_number"),
+            prop.get("assigned_house_number"),
+            prop.get("property_type"),
+            prop.get("owner_name"),
+            prop.get("owner_phone"),
+            prop.get("owner_email"),
+            prop.get("owner_address"),
+            prop.get("business_type"),
+            prop.get("business_name_1"),
+            prop.get("business_name_2"),
+            prop.get("business_name_3"),
+            prop.get("business_name_4"),
+            prop.get("no_of_floors"),
+            prop.get("no_of_units"),
+            prop.get("revenue_category"),
+            prop.get("completeness_status"),
+            "Billed" if prop.get("property_id") in billed_ids else "Unbilled",
+            prop.get("enumeration_date"),
+            prop.get("latitude"),
+            prop.get("longitude"),
+            prop.get("area_in_me"),
+            prop.get("confidence"),
+            prop.get("full_plus_field"),
+            prop.get("contact_name"),
+            prop.get("contact_phone"),
+            prop.get("contact_email"),
+            prop.get("contact_address"),
+            prop.get("photo_front"),
+            prop.get("photo_gate"),
+            prop.get("photo_signage"),
+            prop.get("photo_street"),
+            prop.get("created_at"),
+        ]
+        ws.append(row)
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
+    for col_idx, column_cells in enumerate(ws.columns, start=1):
+        max_length = 0
+        for cell in column_cells:
+            value = cell.value
+            if value is not None:
+                max_length = max(max_length, len(str(value)))
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 35)
+
+    filename = f"enumerated_properties_{year}.xlsx"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    wb.save(response)
+    return response
 # ---------------------------------------------------------------------------
 # Authentication Views
 # ---------------------------------------------------------------------------
