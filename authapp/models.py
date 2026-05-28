@@ -126,3 +126,28 @@ class SessionToken(models.Model):
             return token
         except cls.DoesNotExist:
             return None
+        
+
+class RoutePayTransaction(models.Model):
+    payee_id = models.CharField(max_length=100, db_index=True)
+    merchant_reference = models.CharField(max_length=120, unique=True)
+    transaction_reference = models.CharField(max_length=120, blank=True, null=True, db_index=True)
+
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="NGN")
+
+    customer_name = models.CharField(max_length=255, blank=True)
+    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length=50, blank=True)
+
+    payment_status = models.IntegerField(blank=True, null=True)
+    payment_description = models.CharField(max_length=100, blank=True)
+
+    raw_init_response = models.JSONField(default=dict, blank=True)
+    raw_status_response = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    is_successful = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
