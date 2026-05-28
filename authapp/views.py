@@ -114,9 +114,6 @@ def signin(request):
     )
 
 
-
-
-
 def get_routepay_token():
     cached_token = cache.get("routepay_access_token")
     if cached_token:
@@ -135,14 +132,22 @@ def get_routepay_token():
         timeout=30,
     )
 
-    response.raise_for_status()
-    result = response.json()
+    try:
+        result = response.json()
+    except Exception:
+        result = {"raw_response": response.text}
+
+    if response.status_code != 200:
+        raise ValueError(
+            f"RoutePay token request failed. "
+            f"Status={response.status_code}. Response={result}"
+        )
 
     access_token = result.get("access_token")
     expires_in = int(result.get("expires_in", 3600))
 
     if not access_token:
-        raise ValueError("RoutePay token response did not include access_token")
+        raise ValueError(f"RoutePay token response did not include access_token. Response={result}")
 
     cache.set("routepay_access_token", access_token, max(expires_in - 120, 300))
     return access_token
@@ -226,7 +231,11 @@ def init_routepay_payment(request):
             timeout=30,
         )
 
-        result = response.json()
+        try:
+            result = response.json()
+        except Exception:
+            result = {"raw_response": response.text}
+
         transaction.raw_init_response = result
 
         redirect_url = result.get("redirectUrl")
@@ -257,13 +266,17 @@ def init_routepay_payment(request):
         )
 
     except Exception as exc:
-        transaction.raw_init_response = {"error": str(exc)}
+        transaction.raw_init_response = {
+            "error": str(exc),
+            "error_type": exc.__class__.__name__,
+        }
         transaction.save(update_fields=["raw_init_response", "updated_at"])
 
         return JsonResponse(
             {
                 "ok": False,
                 "message": "Unable to initialize RoutePay payment. Please try again.",
+                "debug": str(exc),  # remove after testing
             },
             status=500,
         )
