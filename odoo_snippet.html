@@ -1,0 +1,1045 @@
+<style>
+  :root {
+    --lera-pay-teal: #1fa79a;
+    --lera-pay-teal-dark: #11786f;
+    --lera-pay-blue: #1e7fc5;
+    --lera-pay-charcoal: #1f2937;
+    --lera-pay-muted: #6b7280;
+    --lera-pay-light: #f4faf9;
+    --lera-pay-border: #d8ebe8;
+    --lera-pay-danger: #dc2626;
+    --lera-pay-warning: #f59e0b;
+    --lera-pay-success: #16a34a;
+  }
+
+  .lera-payment-shell {
+    width: 100%;
+    padding: 34px 18px;
+    background:
+      radial-gradient(circle at top left, rgba(31, 167, 154, 0.14), transparent 32%),
+      linear-gradient(135deg, #ffffff 0%, #f4faf9 55%, #eef8f6 100%);
+    border-radius: 28px;
+    overflow: hidden;
+  }
+
+  .lera-payment-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .lera-payment-grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 28px;
+    align-items: stretch;
+  }
+
+  .lera-payment-intro {
+    padding: 34px;
+    border-radius: 26px;
+    background: linear-gradient(
+      160deg,
+      rgba(31, 167, 154, 0.1),
+      rgba(30, 127, 197, 0.08)
+    );
+    border: 1px solid rgba(31, 167, 154, 0.18);
+  }
+
+  .lera-payment-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 13px;
+    border-radius: 999px;
+    background: rgba(31, 167, 154, 0.12);
+    color: var(--lera-pay-teal-dark);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 18px;
+  }
+
+  .lera-payment-intro h2 {
+    margin: 0 0 14px;
+    color: var(--lera-pay-charcoal);
+    font-size: clamp(28px, 4vw, 46px);
+    line-height: 1.05;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+
+  .lera-payment-intro p {
+    margin: 0;
+    color: var(--lera-pay-muted);
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .lera-payment-steps {
+    display: grid;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .lera-payment-step {
+    display: flex;
+    gap: 13px;
+    align-items: flex-start;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(31, 167, 154, 0.14);
+  }
+
+  .lera-payment-step-number {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--lera-pay-teal);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .lera-payment-step strong {
+    display: block;
+    color: var(--lera-pay-charcoal);
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+
+  .lera-payment-step span {
+    display: block;
+    color: var(--lera-pay-muted);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .verification-container {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    text-align: left;
+  }
+
+  .lera-payment-card {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid var(--lera-pay-border);
+    border-radius: 26px;
+    box-shadow: 0 20px 55px rgba(17, 120, 111, 0.12);
+    overflow: hidden;
+  }
+
+  .lera-payment-card-head {
+    padding: 28px 28px 18px;
+    border-bottom: 1px solid var(--lera-pay-border);
+  }
+
+  .lera-payment-card-head h3 {
+    margin: 0 0 8px;
+    color: var(--lera-pay-charcoal);
+    font-size: 25px;
+    line-height: 1.2;
+    font-weight: 800;
+  }
+
+  .lera-payment-card-head p {
+    margin: 0;
+    color: var(--lera-pay-muted);
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .lera-payment-search {
+    padding: 24px 28px 28px;
+  }
+
+  .lera-field-label {
+    display: block;
+    color: var(--lera-pay-charcoal);
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .verification-input,
+  .amount-input,
+  .email_user,
+  .style {
+    width: 100%;
+    height: 52px;
+    padding: 0 15px;
+    border: 1px solid var(--lera-pay-border);
+    border-radius: 15px;
+    background: #ffffff;
+    color: var(--lera-pay-charcoal);
+    font-size: 15px;
+    outline: none;
+    transition: 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .verification-input:focus,
+  .amount-input:focus,
+  .email_user:focus,
+  .style:focus {
+    border-color: var(--lera-pay-teal);
+    box-shadow: 0 0 0 4px rgba(31, 167, 154, 0.12);
+  }
+
+  .verify-button,
+  .payment-btn {
+    width: 100%;
+    min-height: 52px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--lera-pay-teal), var(--lera-pay-blue));
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.25s ease;
+    box-shadow: 0 14px 30px rgba(31, 167, 154, 0.22);
+  }
+
+  .verify-button {
+    margin-top: 14px;
+  }
+
+  .verify-button:hover,
+  .payment-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 36px rgba(31, 167, 154, 0.28);
+  }
+
+  .verify-button:disabled,
+  .payment-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+    transform: none;
+  }
+
+  .lera-payment-note {
+    margin-top: 14px;
+    display: flex;
+    gap: 9px;
+    padding: 12px 13px;
+    border-radius: 14px;
+    background: var(--lera-pay-light);
+    color: var(--lera-pay-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .verification-result-container {
+    padding: 0 28px 28px;
+  }
+
+  .verification-result {
+    background: #ffffff;
+    border-radius: 22px;
+    border: 1px solid var(--lera-pay-border);
+    overflow: hidden;
+  }
+
+  .lera-result-header {
+    padding: 20px;
+    background: linear-gradient(
+      135deg,
+      rgba(31, 167, 154, 0.12),
+      rgba(30, 127, 197, 0.08)
+    );
+    border-bottom: 1px solid var(--lera-pay-border);
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .lera-result-header h3 {
+    margin: 0;
+    color: var(--lera-pay-charcoal);
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .lera-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+    background: #f3f4f6;
+    color: var(--lera-pay-muted);
+  }
+
+  .lera-status-pill.paid {
+    color: var(--lera-pay-success);
+    background: rgba(22, 163, 74, 0.12);
+  }
+
+  .lera-status-pill.pending {
+    color: var(--lera-pay-warning);
+    background: rgba(245, 158, 11, 0.14);
+  }
+
+  .lera-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .lera-detail-item {
+    padding: 14px;
+    border-radius: 16px;
+    background: #fbfefd;
+    border: 1px solid #edf5f3;
+  }
+
+  .lera-detail-item span {
+    display: block;
+    color: var(--lera-pay-muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 5px;
+  }
+
+  .lera-detail-item strong {
+    display: block;
+    color: var(--lera-pay-charcoal);
+    font-size: 15px;
+    font-weight: 800;
+    word-break: break-word;
+  }
+
+  .lera-payment-form-panel {
+    margin-top: 18px;
+    padding: 22px;
+    border: 1px solid var(--lera-pay-border);
+    border-radius: 22px;
+    background: #ffffff;
+  }
+
+  .lera-payment-form-title {
+    margin-bottom: 18px;
+  }
+
+  .lera-payment-form-title h3 {
+    margin: 0 0 6px;
+    color: var(--lera-pay-charcoal);
+    font-size: 21px;
+    font-weight: 800;
+  }
+
+  .lera-payment-form-title p {
+    margin: 0;
+    color: var(--lera-pay-muted);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .lera-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .lera-form-field-full {
+    grid-column: 1 / -1;
+  }
+
+  .lera-form-field {
+    display: block;
+  }
+
+  .lera-payment-submit-wrap {
+    margin-top: 18px;
+  }
+
+  .errorBox,
+  .verification-result-status,
+  .lera-payment-return-banner {
+    min-height: 1.25rem;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    text-align: center;
+    color: var(--lera-pay-danger);
+    background: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.12);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .errorBox:empty,
+  .lera-payment-return-banner:empty {
+    display: none;
+  }
+
+  .lera-payment-return-banner.success {
+    color: var(--lera-pay-success);
+    background: rgba(22, 163, 74, 0.1);
+    border-color: rgba(22, 163, 74, 0.18);
+  }
+
+  .lera-payment-return-banner.warning {
+    color: var(--lera-pay-warning);
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+
+  .lera-payment-return-banner.danger {
+    color: var(--lera-pay-danger);
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.12);
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 7px;
+    vertical-align: -0.125em;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .lera-payment-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .lera-payment-intro {
+      padding: 26px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .lera-payment-shell {
+      padding: 18px 12px;
+      border-radius: 20px;
+    }
+
+    .lera-payment-card,
+    .lera-payment-intro {
+      border-radius: 20px;
+    }
+
+    .lera-payment-card-head,
+    .lera-payment-search,
+    .verification-result-container {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+
+    .lera-result-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .lera-detail-grid,
+    .lera-form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .verification-input,
+    .amount-input,
+    .email_user,
+    .style,
+    .verify-button,
+    .payment-btn {
+      height: 50px;
+    }
+  }
+</style>
+
+<section id="lera-routepay-payment-widget" class="lera-payment-shell">
+  <div class="lera-payment-wrap">
+    <div class="lera-payment-grid">
+      <div class="lera-payment-intro">
+        <div class="lera-payment-kicker">Secure LERA Payment</div>
+
+        <h2>Make your Property &amp; Community Support Levy payment</h2>
+
+        <p>
+          Enter your Assessment Number to verify your levy details, confirm your
+          information, and proceed securely with payment.
+        </p>
+
+        <div class="lera-payment-steps">
+          <div class="lera-payment-step">
+            <div class="lera-payment-step-number">1</div>
+            <div>
+              <strong>Enter Assessment Number</strong>
+              <span>Use the assessment number on your demand notice or levy record.</span>
+            </div>
+          </div>
+
+          <div class="lera-payment-step">
+            <div class="lera-payment-step-number">2</div>
+            <div>
+              <strong>Verify Payment Details</strong>
+              <span>Review the property owner information, amount, and payment status.</span>
+            </div>
+          </div>
+
+          <div class="lera-payment-step">
+            <div class="lera-payment-step-number">3</div>
+            <div>
+              <strong>Proceed to Secure Payment</strong>
+              <span>Continue to the secure payment page.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="verification-container lera-payment-card">
+        <div class="lera-payment-card-head">
+          <h3>Verify and Make Payment</h3>
+
+          <p>
+            Please enter your Assessment Number below to retrieve your payment
+            record and proceed to payment.
+          </p>
+
+          <div class="lera-payment-return-banner" aria-live="polite"></div>
+        </div>
+
+        <div class="lera-payment-search">
+          <label class="lera-field-label" for="lera-assessment-number">
+            Assessment Number
+          </label>
+
+          <input
+            id="lera-assessment-number"
+            type="text"
+            class="verification-input"
+            placeholder="Enter Assessment Number"
+            autocomplete="off"
+          />
+
+          <button class="verify-button" type="button">
+            Make Payment
+          </button>
+
+          <div class="lera-payment-note">
+            <span>ⓘ</span>
+            <span>
+              Ensure the assessment number is entered exactly as shown on your notice.
+            </span>
+          </div>
+        </div>
+
+        <div class="verification-result-container"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    function initLeraRoutePayWidget() {
+      const widget = document.getElementById("lera-routepay-payment-widget");
+
+      if (!widget) return;
+
+      if (widget.dataset.initialized === "true") return;
+      widget.dataset.initialized = "true";
+
+      const verifyButton = widget.querySelector(".verify-button");
+      const inputField = widget.querySelector(".verification-input");
+      const resultContainer = widget.querySelector(".verification-result-container");
+      const returnBanner = widget.querySelector(".lera-payment-return-banner");
+
+      const MIN_AMOUNT_NGN = 1;
+
+      const VALIDATION_API_URL =
+        "https://lera-billing-api.newwavesecosystem.com/api/etz/validation";
+
+      const PAYMENT_INIT_URL =
+        "https://leravirtualization.newwavesecosystem.com/authapp/api/routepay/init-payment/";
+
+      function escapeHTML(str) {
+        if (str == null) return "";
+
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function normaliseAmount(value) {
+        if (value == null || value === "") return "";
+        return String(value).replace(/,/g, "").trim();
+      }
+
+      function formatNaira(value) {
+        const number = Number(normaliseAmount(value));
+
+        if (!Number.isFinite(number)) return "N/A";
+
+        return "₦" + number.toLocaleString("en-NG");
+      }
+
+      function mapStatusToClass(status) {
+        const s = (status || "").toLowerCase();
+
+        if ((/paid/.test(s) && !/not/.test(s)) || /successful/.test(s)) {
+          return "paid";
+        }
+
+        if (/pending|not yet|unpaid|not paid/.test(s)) {
+          return "pending";
+        }
+
+        return "";
+      }
+
+      function showError(errorBox, msg) {
+        if (errorBox) {
+          errorBox.textContent = msg;
+        } else {
+          alert(msg);
+        }
+      }
+
+      function resetButton(button, text) {
+        if (!button) return;
+
+        button.disabled = false;
+        button.textContent = text;
+      }
+
+      function setReturnBanner(message, type) {
+        if (!returnBanner) return;
+
+        returnBanner.className = "lera-payment-return-banner";
+
+        if (type) {
+          returnBanner.classList.add(type);
+        }
+
+        returnBanner.textContent = message || "";
+      }
+
+      async function safeJson(response) {
+        try {
+          return await response.json();
+        } catch (error) {
+          return {};
+        }
+      }
+
+      function showPaymentReturnMessage() {
+        const params = new URLSearchParams(window.location.search);
+
+        const paymentStatus = (
+          params.get("payment_status") ||
+          params.get("status") ||
+          ""
+        ).toLowerCase();
+
+        const ref =
+          params.get("ref") ||
+          params.get("transactionReference") ||
+          "";
+
+        if (!paymentStatus) return;
+
+        if (
+          paymentStatus === "successful" ||
+          paymentStatus === "success" ||
+          paymentStatus === "paid"
+        ) {
+          setReturnBanner(
+            "Payment submitted successfully. Your payment confirmation will be updated after final verification." +
+              (ref ? " Reference: " + ref : ""),
+            "success"
+          );
+
+          return;
+        }
+
+        if (paymentStatus === "pending" || paymentStatus === "processing") {
+          setReturnBanner(
+            "Your payment is being processed. Please check again shortly." +
+              (ref ? " Reference: " + ref : ""),
+            "warning"
+          );
+
+          return;
+        }
+
+        if (
+          paymentStatus === "failed" ||
+          paymentStatus === "cancelled" ||
+          paymentStatus === "verification_failed"
+        ) {
+          setReturnBanner(
+            "Payment was not completed or could not be verified. Please try again or contact support.",
+            "danger"
+          );
+
+          return;
+        }
+
+        setReturnBanner(
+          "Payment status could not be confirmed automatically. Please verify again or contact support.",
+          "warning"
+        );
+      }
+
+      showPaymentReturnMessage();
+
+      inputField.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          verifyButton.click();
+        }
+      });
+
+      verifyButton.addEventListener("click", async function () {
+        const payeeId = inputField.value.trim();
+
+        if (!payeeId) {
+          alert("Please enter a valid Assessment Number.");
+          return;
+        }
+
+        const url =
+          VALIDATION_API_URL + "?PAYEE_ID=" + encodeURIComponent(payeeId);
+
+        verifyButton.disabled = true;
+        verifyButton.innerHTML = "<span class='spinner'></span> Verifying...";
+        resultContainer.innerHTML = "";
+        setReturnBanner("", "");
+
+        try {
+          const response = await fetch(url);
+          const data = await safeJson(response);
+
+          if (data && data.FeeRequest) {
+            renderPaymentRecord(data.FeeRequest, payeeId);
+          } else {
+            resultContainer.innerHTML =
+              '<div class="verification-result-status">' +
+              "Invalid Assessment Number or no payment record found." +
+              "</div>";
+          }
+        } catch (error) {
+          resultContainer.innerHTML =
+            '<div class="verification-result-status">' +
+            "We could not verify this Assessment Number. Please check it and try again." +
+            "</div>";
+        } finally {
+          resetButton(verifyButton, "Make Payment");
+        }
+      });
+
+      function renderPaymentRecord(FR, payeeId) {
+        const feeStatus = FR.FeeStatus || "";
+        const feeStatusClass = mapStatusToClass(feeStatus);
+
+        const isUnpaid =
+          /fee has not yet been paid|not paid|unpaid|pending/i.test(feeStatus);
+
+        let resultHTML = "";
+
+        resultHTML += '<div class="verification-result">';
+        resultHTML += '  <div class="lera-result-header">';
+        resultHTML += "    <h3>Payment Details</h3>";
+        resultHTML +=
+          '    <span class="lera-status-pill ' +
+          feeStatusClass +
+          '">' +
+          escapeHTML(feeStatus || "Status unavailable") +
+          "</span>";
+        resultHTML += "  </div>";
+
+        resultHTML += '  <div class="lera-detail-grid">';
+        resultHTML += detailItem("Payee Name", FR.PayeeName || "N/A");
+        resultHTML += detailItem("Payee ID", FR.PayeeID || "N/A");
+        resultHTML += detailItem("Amount", formatNaira(FR.Amount));
+        resultHTML += detailItem("Phone Number", FR.PhoneNumber || "N/A");
+        resultHTML += "  </div>";
+        resultHTML += "</div>";
+
+        if (isUnpaid) {
+          resultHTML += getPaymentFormHTML(FR);
+        } else {
+          resultHTML +=
+            '<div class="errorBox" aria-live="polite" role="alert">' +
+            "This record does not currently require payment based on the returned payment status." +
+            "</div>";
+        }
+
+        resultContainer.innerHTML = resultHTML;
+
+        if (!isUnpaid) return;
+
+        bindPaymentButton(FR, payeeId);
+      }
+
+      function detailItem(label, value) {
+        return (
+          '<div class="lera-detail-item">' +
+          "<span>" +
+          escapeHTML(label) +
+          "</span>" +
+          "<strong>" +
+          escapeHTML(value) +
+          "</strong>" +
+          "</div>"
+        );
+      }
+
+      function getPaymentFormHTML(FR) {
+        return `
+          <div class="lera-payment-form-panel">
+            <div class="lera-payment-form-title">
+              <h3>Complete Payment Information</h3>
+              <p>
+                Confirm the amount and provide owner details before proceeding to payment.
+              </p>
+            </div>
+
+            <div class="lera-form-grid">
+              <label class="lera-form-field">
+                <span class="lera-field-label">Amount</span>
+                <input
+                  type="number"
+                  class="amount-input"
+                  placeholder="Enter Amount to Pay"
+                />
+              </label>
+
+
+              <label class="lera-form-field">
+                <span class="lera-field-label">Owner Surname</span>
+                <input
+                  type="text"
+                  class="surname-input style"
+                  placeholder="Enter owner surname"
+                />
+              </label>
+
+              <label class="lera-form-field">
+                <span class="lera-field-label">Owner First Name</span>
+                <input
+                  type="text"
+                  class="firstname-input style"
+                  placeholder="Enter owner first name"
+                />
+              </label>
+
+              <label class="lera-form-field">
+                <span class="lera-field-label">Other Name</span>
+                <input
+                  type="text"
+                  class="othername-input style"
+                  placeholder="Enter other name"
+                />
+              </label>
+
+              <label class="lera-form-field">
+                <span class="lera-field-label">Owner Phone Number</span>
+                <input
+                  type="text"
+                  class="phonenumber-input style"
+                  placeholder="WhatsApp preferred"
+                />
+              </label>
+
+              <label class="lera-form-field lera-form-field-full">
+                <span class="lera-field-label">Owner Property Address</span>
+                <input
+                  type="text"
+                  class="address-input style"
+                  placeholder="Enter property address"
+                />
+              </label>
+
+              <label class="lera-form-field lera-form-field-full">
+                <span class="lera-field-label">Owner Email</span>
+                <input
+                  type="email"
+                  class="email_user"
+                  placeholder="Enter email address"
+                />
+              </label>
+            </div>
+
+            <div class="lera-payment-submit-wrap">
+              <button class="payment-btn" type="button">
+                Proceed to Payment
+              </button>
+            </div>
+          </div>
+
+          <div class="errorBox" aria-live="polite" role="alert"></div>
+        `;
+      }
+
+      function bindPaymentButton(FR, payeeId) {
+        const errorBox = resultContainer.querySelector(".errorBox");
+        const paymentButton = resultContainer.querySelector(".payment-btn");
+        const amountInput = resultContainer.querySelector(".amount-input");
+        const emailInput = resultContainer.querySelector(".email_user");
+        const surnameInput = resultContainer.querySelector(".surname-input");
+        const firstnameInput = resultContainer.querySelector(".firstname-input");
+        const othernameInput = resultContainer.querySelector(".othername-input");
+        const addressInput = resultContainer.querySelector(".address-input");
+        const phoneInput = resultContainer.querySelector(".phonenumber-input");
+
+        if (amountInput) {
+          amountInput.value = normaliseAmount(FR.Amount) || "";
+        }
+
+        if (phoneInput && FR.PhoneNumber) {
+          phoneInput.value = FR.PhoneNumber || "";
+        }
+
+        if (!paymentButton) {
+          showError(errorBox, "Payment form failed to load. Please refresh and try again.");
+          return;
+        }
+
+        paymentButton.addEventListener("click", async function () {
+          errorBox.textContent = "";
+
+          const requiredFields = [
+            amountInput,
+            emailInput,
+            surnameInput,
+            firstnameInput,
+            addressInput,
+            phoneInput
+          ];
+
+          const allFilled = requiredFields.every(function (field) {
+            return field && field.value && field.value.trim() !== "";
+          });
+
+          if (!allFilled) {
+            showError(errorBox, "Please fill in all required fields before proceeding.");
+            return;
+          }
+
+          const amountNumber = Number(normaliseAmount(amountInput.value));
+
+          if (!Number.isFinite(amountNumber) || amountNumber < MIN_AMOUNT_NGN) {
+            showError(
+              errorBox,
+              "Amount is too low. Minimum is ₦" + MIN_AMOUNT_NGN + "."
+            );
+            return;
+          }
+
+          paymentButton.disabled = true;
+          paymentButton.innerHTML =
+            "<span class='spinner'></span> Redirecting to payment...";
+
+          const customerName = FR.PayeeName || "";
+          const email = emailInput.value.trim();
+          const phone = phoneInput.value.trim();
+          const firstName = firstnameInput.value.trim();
+          const lastName = surnameInput.value.trim();
+          const otherName = othernameInput ? othernameInput.value.trim() : "";
+          const propertyAddress = addressInput.value.trim();
+
+          const paymentPayload = {
+            payeeId: FR.PayeeID || payeeId,
+            assessmentNumber: payeeId,
+            payeeName: customerName,
+            amount: amountNumber,
+            currency: "NGN",
+            email: email,
+            phone: phone,
+            firstName: firstName || customerName.split(" ")[0] || "LERA",
+            lastName: lastName || "Payer",
+            otherName: otherName,
+            propertyAddress: propertyAddress,
+            narration: "LERA levy payment - " + payeeId + " - " + customerName,
+            metadata: {
+              source: "odoo_embedded_payment_page",
+              assessmentNumber: payeeId,
+              payeeId: FR.PayeeID || payeeId,
+              payeeName: customerName,
+              feeStatus: FR.FeeStatus || "",
+              originalAmount: FR.Amount || "",
+              ownerSurname: lastName,
+              ownerFirstname: firstName,
+              otherName: otherName,
+              ownerPropertyAddress: propertyAddress,
+              ownerPhoneNumber: phone,
+              ownerEmail: email
+            }
+          };
+
+          try {
+            const paymentResponse = await fetch(PAYMENT_INIT_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(paymentPayload)
+            });
+
+            const paymentResult = await safeJson(paymentResponse);
+
+            const redirectUrl =
+              paymentResult.redirectUrl ||
+              paymentResult.authorizationUrl ||
+              (paymentResult.data && paymentResult.data.redirectUrl) ||
+              (paymentResult.data && paymentResult.data.authorizationUrl) ||
+              (paymentResult.value && paymentResult.value.redirectUrl);
+
+            if (paymentResponse.ok && redirectUrl) {
+              window.location.href = redirectUrl;
+              return;
+            }
+
+            showError(
+              errorBox,
+              paymentResult.message ||
+                paymentResult.error ||
+                "Payment initialization failed. Please try again."
+            );
+          } catch (error) {
+            showError(
+              errorBox,
+              "Payment could not be initialized. Please check your connection and try again."
+            );
+          } finally {
+            resetButton(paymentButton, "Proceed to Payment");
+          }
+        });
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initLeraRoutePayWidget);
+    } else {
+      initLeraRoutePayWidget();
+    }
+  })();
+</script>

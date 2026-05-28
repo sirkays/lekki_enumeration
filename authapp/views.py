@@ -114,45 +114,138 @@ def signin(request):
     )
 
 
+import time
+from urllib.parse import urlencode
+
+def parse_routepay_json(response):
+    try:
+        return response.json()
+    except Exception:
+        return {"raw_response": response.text}
+
+
 def get_routepay_token():
     cached_token = cache.get("routepay_access_token")
     if cached_token:
         return cached_token
 
-    response = requests.post(
-        settings.ROUTEPAY_AUTH_URL,
-        data={
-            "grant_type": "client_credentials",
-            "client_id": settings.ROUTEPAY_CLIENT_ID,
-            "client_secret": settings.ROUTEPAY_CLIENT_SECRET,
-        },
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json",
-            "User-Agent": "LERA-RoutePay-Integration/1.0",
-        },
-        timeout=30,
-    )
+    url = settings.ROUTEPAY_AUTH_URL
+    payload = {
+        "grant_type": "client_credentials",
+        "client_id": settings.ROUTEPAY_CLIENT_ID,
+        "client_secret": settings.ROUTEPAY_CLIENT_SECRET,
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+        "User-Agent": "LERA-RoutePay-Integration/1.0",
+    }
 
     try:
-        result = response.json()
-    except Exception:
-        result = {"raw_response": response.text}
+        response = requests.post(url, data=payload, headers=headers, timeout=30)
+        result = parse_routepay_json(response)
+    except Exception as e:
+        raise ValueError(f"RoutePay connection failed: {str(e)}")
 
     if response.status_code != 200:
         raise ValueError(
-            f"RoutePay token request failed. "
-            f"Status={response.status_code}. Response={result}"
+            f"RoutePay token request failed. Status={response.status_code}. Response={result}"
         )
 
     access_token = result.get("access_token")
-    expires_in = int(result.get("expires_in", 3600))
-
     if not access_token:
         raise ValueError(f"RoutePay token response did not include access_token. Response={result}")
 
-    cache.set("routepay_access_token", access_token, max(expires_in - 120, 300))
+    expires_in = int(result.get("expires_in") or 900)
+    cache_duration = max(expires_in - 60, 300)
+    cache.set("routepay_access_token", access_token, cache_duration)
     return access_token
+
+
+def is_routepay_successful(response, result):
+    if response.status_code != 200:
+        return False
+
+    payment_status = result.get("paymentStatus")
+    payment_description = get_routepay_payment_description(result)
+
+    status_str = str(payment_status).strip().lower() if payment_status is not None else ""
+    desc_str = str(payment_description).strip().lower()
+
+    success_markers = {"0", "successful", "success", "paid", "approved", "completed"}
+
+    if status_str in success_markers or desc_str in success_markers:
+        return True
+
+    return False
+
+
+def normalize_routepay_status_code(result, is_successful=False):
+    if is_successful:
+        return 0
+
+    payment_status = result.get("paymentStatus")
+    if payment_status is None:
+        return None
+
+    status_str = str(payment_status).strip().lower()
+
+    if status_str in {"0", "successful", "success", "paid", "approved", "completed"}:
+        return 0
+    elif status_str in {"250", "pending"}:
+        return 250
+    elif status_str in {"260", "processing"}:
+        return 260
+    elif status_str in {"210", "alreadyprocessed", "already processed"}:
+        return 210
+    elif status_str in {"220", "cancelled", "canceled"}:
+        return 220
+    elif status_str in {"550", "failed", "declined"}:
+        return 550
+
+    try:
+        return int(status_str)
+    except ValueError:
+        return None
+
+
+def get_routepay_payment_description(result):
+    if not isinstance(result, dict):
+        return ""
+
+    for key in ["paymentDescription", "description", "paymentStatus", "responseMessage"]:
+        val = result.get(key)
+        if val is not None and str(val).strip() != "":
+            return str(val).strip()
+
+    return ""
+
+
+def query_routepay_transaction(transaction_reference):
+    token = get_routepay_token()
+    url = f"{settings.ROUTEPAY_BASE_URL}/payment/api/v1/Payment/GetTransaction/{transaction_reference}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "User-Agent": "LERA-RoutePay-Integration/1.0",
+    }
+    response = requests.get(url, headers=headers, timeout=30)
+    result = parse_routepay_json(response)
+    return response, result
+
+
+def save_routepay_status(transaction, response, result):
+    is_successful = is_routepay_successful(response, result)
+    payment_status = normalize_routepay_status_code(result, is_successful=is_successful)
+    payment_description = get_routepay_payment_description(result)
+
+    transaction.payment_status = payment_status
+    transaction.payment_description = payment_description
+    transaction.raw_status_response = result
+    transaction.is_successful = is_successful
+    transaction.save()
+
+    return is_successful
 
 
 @csrf_exempt
@@ -185,7 +278,8 @@ def init_routepay_payment(request):
 
     merchant_reference = f"LERA-{payee_id}-{timezone.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
 
-    return_url = f"{settings.ROUTEPAY_RETURN_URL}?merchantReference={merchant_reference}"
+    return_base_url = settings.ROUTEPAY_RETURN_URL.rstrip("/")
+    return_url = f"{return_base_url}/{merchant_reference}/"
 
     routepay_payload = {
         "merchantId": settings.ROUTEPAY_CLIENT_ID,
@@ -235,11 +329,7 @@ def init_routepay_payment(request):
             timeout=30,
         )
 
-        try:
-            result = response.json()
-        except Exception:
-            result = {"raw_response": response.text}
-
+        result = parse_routepay_json(response)
         transaction.raw_init_response = result
 
         redirect_url = result.get("redirectUrl")
@@ -280,7 +370,7 @@ def init_routepay_payment(request):
             {
                 "ok": False,
                 "message": "Unable to initialize RoutePay payment. Please try again.",
-                "debug": str(exc),  # remove after testing
+                "debug": str(exc),
             },
             status=500,
         )
@@ -289,35 +379,19 @@ def init_routepay_payment(request):
 @require_GET
 def routepay_status(request, transaction_reference):
     try:
-        token = get_routepay_token()
+        transaction = RoutePayTransaction.objects.filter(
+            transaction_reference=transaction_reference
+        ).first()
 
-        response = requests.get(
-            f"{settings.ROUTEPAY_BASE_URL}/payment/api/v1/Payment/GetTransaction/{transaction_reference}",
-            headers={
-                "Authorization": f"Bearer {token}",
-            },
-            timeout=30,
-        )
+        response, result = query_routepay_transaction(transaction_reference)
 
-        result = response.json()
+        if transaction:
+            is_successful = save_routepay_status(transaction, response, result)
+        else:
+            is_successful = is_routepay_successful(response, result)
 
-        payment_status = result.get("paymentStatus")
-        payment_description = result.get("paymentDescription") or result.get("description") or ""
-
-        is_successful = (
-            response.status_code == 200
-            and int(payment_status) == 0
-            and payment_description.lower() == "successful"
-        )
-
-        RoutePayTransaction.objects.filter(
-            transaction_reference=str(transaction_reference)
-        ).update(
-            payment_status=payment_status,
-            payment_description=payment_description,
-            raw_status_response=result,
-            is_successful=is_successful,
-        )
+        payment_status = normalize_routepay_status_code(result, is_successful=is_successful)
+        payment_description = get_routepay_payment_description(result)
 
         return JsonResponse(
             {
@@ -329,69 +403,90 @@ def routepay_status(request, transaction_reference):
             }
         )
 
-    except Exception:
+    except Exception as exc:
         return JsonResponse(
             {
                 "ok": False,
                 "message": "Unable to verify transaction status.",
+                "debug": str(exc),
             },
             status=500,
         )
 
 
 @require_GET
-def routepay_return(request):
-    merchant_reference = request.GET.get("merchantReference")
+def routepay_return(request, merchant_reference=None):
+    if not merchant_reference:
+        merchant_reference = request.GET.get("merchantReference")
+
+    odoo_base_url = getattr(settings, "ODOO_PAYMENT_PAGE_URL", "https://lera.odoo.com/payment")
 
     if not merchant_reference:
-        return HttpResponseRedirect("https://lera.odoo.com/payment?payment_status=unknown")
+        params = {"payment_status": "pending"}
+        return HttpResponseRedirect(f"{odoo_base_url}?{urlencode(params)}")
 
     transaction = RoutePayTransaction.objects.filter(
         merchant_reference=merchant_reference
     ).first()
 
-    if not transaction or not transaction.transaction_reference:
-        return HttpResponseRedirect("https://lera.odoo.com/payment?payment_status=pending")
+    if not transaction:
+        params = {"payment_status": "pending", "merchantReference": merchant_reference}
+        return HttpResponseRedirect(f"{odoo_base_url}?{urlencode(params)}")
 
-    # Re-query RoutePay before showing success.
+    if not transaction.transaction_reference:
+        params = {
+            "payment_status": "pending",
+            "merchantReference": merchant_reference,
+        }
+        return HttpResponseRedirect(f"{odoo_base_url}?{urlencode(params)}")
+
+    is_successful = False
+    last_exc = None
+
+    for attempt in range(5):
+        try:
+            response, result = query_routepay_transaction(transaction.transaction_reference)
+            is_successful = save_routepay_status(transaction, response, result)
+
+            if is_successful:
+                break
+
+            time.sleep(2)
+        except Exception as exc:
+            last_exc = exc
+            time.sleep(2)
+
     try:
-        token = get_routepay_token()
-
-        response = requests.get(
-            f"{settings.ROUTEPAY_BASE_URL}/payment/api/v1/Payment/GetTransaction/{transaction.transaction_reference}",
-            headers={
-                "Authorization": f"Bearer {token}",
-            },
-            timeout=30,
-        )
-
-        result = response.json()
-
-        payment_status = result.get("paymentStatus")
-        payment_description = result.get("paymentDescription") or result.get("description") or ""
-
-        is_successful = (
-            response.status_code == 200
-            and int(payment_status) == 0
-            and payment_description.lower() == "successful"
-        )
-
-        transaction.payment_status = payment_status
-        transaction.payment_description = payment_description
-        transaction.raw_status_response = result
-        transaction.is_successful = is_successful
-        transaction.save()
+        if last_exc and not is_successful:
+            params = {
+                "payment_status": "verification_failed",
+                "ref": transaction.transaction_reference,
+                "merchantReference": merchant_reference,
+            }
+            return HttpResponseRedirect(f"{odoo_base_url}?{urlencode(params)}")
 
         if is_successful:
-            return HttpResponseRedirect(
-                f"https://lera.odoo.com/payment?payment_status=successful&ref={transaction.transaction_reference}"
-            )
+            params = {
+                "payment_status": "successful",
+                "ref": transaction.transaction_reference,
+                "merchantReference": merchant_reference,
+            }
+        else:
+            params = {
+                "payment_status": "pending",
+                "ref": transaction.transaction_reference,
+                "merchantReference": merchant_reference,
+            }
 
-        return HttpResponseRedirect(
-            f"https://lera.odoo.com/payment?payment_status=pending&ref={transaction.transaction_reference}"
-        )
+        return HttpResponseRedirect(f"{odoo_base_url}?{urlencode(params)}")
 
     except Exception:
-        return HttpResponseRedirect("https://lera.odoo.com/payment?payment_status=verification_failed")
+        params = {
+            "payment_status": "verification_failed",
+            "ref": transaction.transaction_reference or "",
+            "merchantReference": merchant_reference,
+        }
+        return HttpResponseRedirect(f"{odoo_base_url}?{urlencode(params)}")
+
     
 
