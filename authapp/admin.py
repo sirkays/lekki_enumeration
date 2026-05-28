@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, SessionToken,UserProfile
+from .models import CustomUser, SessionToken,UserProfile,RoutePayTransaction
 from django.utils.html import format_html
+import json
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -181,3 +182,243 @@ class UserProfileAdmin(admin.ModelAdmin):
     profile_image_preview.short_description = "Image"
 
 
+
+@admin.register(RoutePayTransaction)
+class RoutePayTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        "merchant_reference",
+        "transaction_reference",
+        "payee_id",
+        "customer_name",
+        "formatted_amount",
+        "status_badge",
+        "is_successful",
+        "created_at",
+        "updated_at",
+    )
+
+    list_filter = (
+        "is_successful",
+        "payment_status",
+        "currency",
+        "created_at",
+        "updated_at",
+    )
+
+    search_fields = (
+        "payee_id",
+        "merchant_reference",
+        "transaction_reference",
+        "customer_name",
+        "customer_email",
+        "customer_phone",
+        "payment_description",
+    )
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "formatted_amount",
+        "status_badge",
+        "pretty_metadata",
+        "pretty_raw_init_response",
+        "pretty_raw_status_response",
+    )
+
+    date_hierarchy = "created_at"
+
+    ordering = ("-created_at",)
+
+    list_per_page = 25
+
+    actions = (
+        "mark_as_successful",
+        "mark_as_pending",
+        "mark_as_failed",
+    )
+
+    fieldsets = (
+        (
+            "Transaction References",
+            {
+                "fields": (
+                    "payee_id",
+                    "merchant_reference",
+                    "transaction_reference",
+                )
+            },
+        ),
+        (
+            "Customer Information",
+            {
+                "fields": (
+                    "customer_name",
+                    "customer_email",
+                    "customer_phone",
+                )
+            },
+        ),
+        (
+            "Payment Details",
+            {
+                "fields": (
+                    "amount",
+                    "formatted_amount",
+                    "currency",
+                    "payment_status",
+                    "payment_description",
+                    "is_successful",
+                    "status_badge",
+                )
+            },
+        ),
+        (
+            "RoutePay / Metadata",
+            {
+                "classes": ("collapse",),
+                "fields": (
+                    "pretty_metadata",
+                    "pretty_raw_init_response",
+                    "pretty_raw_status_response",
+                ),
+            },
+        ),
+        (
+            "System Dates",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    def formatted_amount(self, obj):
+        if obj.amount is None:
+            return "-"
+
+        return f"{obj.currency or 'NGN'} {obj.amount:,.2f}"
+
+    formatted_amount.short_description = "Amount"
+
+    def status_badge(self, obj):
+        status = obj.payment_status
+        description = obj.payment_description or ""
+
+        if obj.is_successful or status == 0:
+            color = "#16a34a"
+            background = "#dcfce7"
+            label = "Successful"
+        elif status in [250, 260]:
+            color = "#d97706"
+            background = "#fef3c7"
+            label = description or "Pending / Processing"
+        elif status in [550, 220]:
+            color = "#dc2626"
+            background = "#fee2e2"
+            label = description or "Failed / Cancelled"
+        elif status == 210:
+            color = "#2563eb"
+            background = "#dbeafe"
+            label = description or "Already Processed"
+        else:
+            color = "#4b5563"
+            background = "#f3f4f6"
+            label = description or "Unknown"
+
+        return format_html(
+            '<span style="'
+            'display:inline-block;'
+            'padding:4px 10px;'
+            'border-radius:999px;'
+            'font-size:12px;'
+            'font-weight:700;'
+            'color:{};'
+            'background:{};'
+            '">{}</span>',
+            color,
+            background,
+            label,
+        )
+
+    status_badge.short_description = "Payment Status"
+
+    def pretty_metadata(self, obj):
+        return self._pretty_json(obj.metadata)
+
+    pretty_metadata.short_description = "Metadata"
+
+    def pretty_raw_init_response(self, obj):
+        return self._pretty_json(obj.raw_init_response)
+
+    pretty_raw_init_response.short_description = "RoutePay Init Response"
+
+    def pretty_raw_status_response(self, obj):
+        return self._pretty_json(obj.raw_status_response)
+
+    pretty_raw_status_response.short_description = "RoutePay Status Response"
+
+    def _pretty_json(self, value):
+        if not value:
+            return "-"
+
+        try:
+            pretty = json.dumps(value, indent=2, ensure_ascii=False)
+        except TypeError:
+            pretty = str(value)
+
+        return format_html(
+            '<pre style="'
+            'white-space:pre-wrap;'
+            'word-break:break-word;'
+            'background:#f8fafc;'
+            'border:1px solid #e5e7eb;'
+            'border-radius:8px;'
+            'padding:12px;'
+            'max-height:420px;'
+            'overflow:auto;'
+            'font-size:12px;'
+            'line-height:1.5;'
+            '">{}</pre>',
+            pretty,
+        )
+
+    @admin.action(description="Mark selected transactions as successful")
+    def mark_as_successful(self, request, queryset):
+        updated = queryset.update(
+            is_successful=True,
+            payment_status=0,
+            payment_description="Successful",
+        )
+
+        self.message_user(
+            request,
+            f"{updated} transaction(s) marked as successful.",
+        )
+
+    @admin.action(description="Mark selected transactions as pending")
+    def mark_as_pending(self, request, queryset):
+        updated = queryset.update(
+            is_successful=False,
+            payment_status=250,
+            payment_description="Pending",
+        )
+
+        self.message_user(
+            request,
+            f"{updated} transaction(s) marked as pending.",
+        )
+
+    @admin.action(description="Mark selected transactions as failed")
+    def mark_as_failed(self, request, queryset):
+        updated = queryset.update(
+            is_successful=False,
+            payment_status=550,
+            payment_description="Failed",
+        )
+
+        self.message_user(
+            request,
+            f"{updated} transaction(s) marked as failed.",
+        )
