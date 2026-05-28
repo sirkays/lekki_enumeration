@@ -128,6 +128,8 @@ def get_routepay_token():
         },
         headers={
             "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+            "User-Agent": "LERA-RoutePay-Integration/1.0",
         },
         timeout=30,
     )
@@ -227,6 +229,8 @@ def init_routepay_payment(request):
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "LERA-RoutePay-Integration/1.0",
             },
             timeout=30,
         )
