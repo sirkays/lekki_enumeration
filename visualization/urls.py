@@ -5,6 +5,9 @@ app_name = "visualization"
 
 urlpatterns = [
     path("", views.user_login, name="user_login"),
+    path('property-management/', views.property_management, name='property_management'),
+
+    # APIs (consumed by JS)
     path("logout/", views.user_logout, name="user_logout"),
     path("visualization/", views.visualization, name="visualization"),
     path("api/properties/", views.api_properties, name="api_properties"),

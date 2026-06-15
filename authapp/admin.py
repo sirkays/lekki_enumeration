@@ -136,6 +136,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         'full_name',
         'phone',
         'role',
+        'property_manager',
         'is_visualizer_display',
         'profile_image_preview',
     )
@@ -155,7 +156,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             'fields': ('user',)
         }),
         ("Profile Details", {
-            'fields': ('full_name', 'phone', 'role')
+            'fields': ('full_name', 'phone', 'role', 'property_manager')
         }),
         ("Profile Image", {
             'fields': ('profile_image', 'profile_image_preview')

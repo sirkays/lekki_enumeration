@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import LekkiEnumeration, BillDistribution
+from .models import LekkiEnumeration, BillDistribution, AppUpdate, PropertyComment
 
 
 @admin.register(LekkiEnumeration)
@@ -169,5 +169,16 @@ class BillDistributionAdmin(admin.ModelAdmin):
         }),
     )
 
+@admin.register(AppUpdate)
+class AppUpdateAdmin(admin.ModelAdmin):
+    list_display = ('version_name', 'version_code', 'is_forced', 'created_at')
+    search_fields = ('version_name', 'version_code')
+    list_filter = ('is_forced', 'created_at')
+    ordering = ('-version_code',)
 
-    
+@admin.register(PropertyComment)
+class PropertyCommentAdmin(admin.ModelAdmin):
+    list_display = ('lekki_enum', 'captured_by', 'created_at')
+    search_fields = ('lekki_enum__property_id', 'comment')
+    list_filter = ('created_at',)
+    autocomplete_fields = ('lekki_enum', 'captured_by')

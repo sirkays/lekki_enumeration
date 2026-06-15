@@ -69,7 +69,32 @@ class BillDistribution(models.Model):
 
     def __str__(self):
         return f"{self.property_id} - {self.year}"
-    
 
+class AppUpdate(models.Model):
+    version_code = models.IntegerField(unique=True, help_text="e.g. 2")
+    version_name = models.CharField(max_length=50, help_text="e.g. 1.0.1")
+    apk_file = models.FileField(upload_to='apks/')
+    release_notes = models.TextField(blank=True, null=True)
+    is_forced = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    
+    class Meta:
+        db_table = 'app_updates'
+        ordering = ['-version_code']
+
+    def __str__(self):
+        return f"{self.version_name} ({self.version_code})"
+
+class PropertyComment(models.Model):
+    lekki_enum = models.ForeignKey(LekkiEnumeration, on_delete=models.CASCADE, related_name='comments')
+    comment = models.TextField(blank=True, null=True)
+    photo = models.ImageField(upload_to='comments/%Y/%m/', blank=True, null=True)
+    captured_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'property_comments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment on {self.lekki_enum.property_id}"

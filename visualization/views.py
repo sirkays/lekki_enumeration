@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Q
 
-from core.models import LekkiEnumeration, BillDistribution
+from core.models import LekkiEnumeration, BillDistribution, PropertyComment
 
 from django.http import HttpResponse
 from openpyxl import Workbook
@@ -373,6 +373,45 @@ def visualization(request):
         'category_stats_json': json.dumps(category_stats),
     }
     return render(request, 'visualization/visualization.html', context)
+
+@login_required(login_url='visualization:user_login')
+def property_management(request):
+    try:
+        profile = request.user.profile
+    except Exception:
+        return render(request, 'visualization/403.html', status=403)
+
+    if not profile.property_manager:
+        return render(request, 'visualization/403.html', status=403)
+
+    if request.method == 'POST':
+        property_id = request.POST.get('property_id')
+        comment_text = request.POST.get('comment')
+        photo = request.FILES.get('photo')
+
+        if property_id and (comment_text or photo):
+            try:
+                lekki_enum = LekkiEnumeration.objects.get(property_id=property_id)
+                PropertyComment.objects.create(
+                    lekki_enum=lekki_enum,
+                    comment=comment_text,
+                    photo=photo,
+                    captured_by=request.user
+                )
+            except LekkiEnumeration.DoesNotExist:
+                pass
+        return redirect('visualization:property_management')
+
+    comments = PropertyComment.objects.select_related('lekki_enum', 'captured_by').order_by('-created_at')
+    # Get properties for the dropdown
+    properties = LekkiEnumeration.objects.values('property_id', 'street_name', 'house_number').order_by('property_id')
+    
+    context = {
+        'profile': profile,
+        'comments': comments,
+        'properties': properties,
+    }
+    return render(request, 'visualization/property_management.html', context)
 
 
 # ---------------------------------------------------------------------------

@@ -71,6 +71,7 @@ class UserProfile(models.Model):
         choices=ROLE_CHOICES,
         default='viewer',
     )
+    property_manager = models.BooleanField(default=False)
     full_name = models.CharField(max_length=255, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
 

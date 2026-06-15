@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import LekkiEnumeration, BillDistribution
+from .models import LekkiEnumeration, BillDistribution, AppUpdate, PropertyComment
 
 
 class LekkiEnumerationSerializer(serializers.ModelSerializer):
@@ -47,3 +47,16 @@ class BillDistributionSerializer(serializers.ModelSerializer):
             obj.lekki_enum.street_name or '',
         ]
         return " ".join([p for p in parts if p]).strip()
+
+class AppUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppUpdate
+        fields = '__all__'
+
+class PropertyCommentSerializer(serializers.ModelSerializer):
+    captured_by_email = serializers.CharField(source='captured_by.email', read_only=True)
+    captured_by_name = serializers.CharField(source='captured_by.first_name', read_only=True)
+
+    class Meta:
+        model = PropertyComment
+        fields = ['id', 'comment', 'photo', 'captured_by_email', 'captured_by_name', 'created_at']

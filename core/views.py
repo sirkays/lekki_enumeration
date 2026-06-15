@@ -15,8 +15,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from authapp.authentication import SessionTokenAuthentication
-from .models import LekkiEnumeration, BillDistribution
-from .serializers import LekkiEnumerationSerializer, BillDistributionSerializer
+from .models import LekkiEnumeration, BillDistribution, AppUpdate, PropertyComment
+from .serializers import LekkiEnumerationSerializer, BillDistributionSerializer, AppUpdateSerializer, PropertyCommentSerializer
 
 
 # ── Add this view to core/views.py ───────────────────────────────────────────
@@ -266,3 +266,42 @@ def tasks_dashboard(request):
         "recent_completions": recent_data,
     })
     
+@api_view(['GET'])
+def get_latest_update(request):
+    """
+    Returns the latest AppUpdate object. This is intentionally public so
+    the app can force an update before the user even logs in.
+    """
+    try:
+        latest = AppUpdate.objects.latest('version_code')
+        serializer = AppUpdateSerializer(latest)
+        return Response(serializer.data)
+    except AppUpdate.DoesNotExist:
+        return Response({"detail": "No updates available"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET', 'POST'])
+@authentication_classes([SessionTokenAuthentication])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def property_comments(request, property_id):
+    lekki_enum = get_object_or_404(LekkiEnumeration, property_id=property_id)
+    
+    if request.method == 'GET':
+        comments = PropertyComment.objects.filter(lekki_enum=lekki_enum)
+        serializer = PropertyCommentSerializer(comments, many=True)
+        return Response(serializer.data)
+        
+    elif request.method == 'POST':
+        comment_text = request.data.get('comment')
+        photo = request.FILES.get('photo')
+        
+        if not comment_text and not photo:
+            return Response({"detail": "Comment text or photo is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        comment_obj = PropertyComment.objects.create(
+            lekki_enum=lekki_enum,
+            comment=comment_text,
+            photo=photo,
+            captured_by=request.user
+        )
+        return Response(PropertyCommentSerializer(comment_obj).data, status=status.HTTP_201_CREATED)
