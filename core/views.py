@@ -69,13 +69,13 @@ def get_properties(request):
             Q(owner_phone__icontains=search_query) |
             Q(contact_phone__icontains=search_query) |
             Q(business_name_1__icontains=search_query)
-        )[:30]
+        )[:500]  # Increased from 30 to 500 to accommodate larger streets
     else:
         properties = LekkiEnumeration.objects.filter(
             property_id__isnull=False,
             latitude__isnull=False,
             longitude__isnull=False,
-        )[:20]
+        )[:200]  # Increased default from 20 to 200
 
     # Fetch all billed property IDs for the requested year in one query.
     billed_ids = set(

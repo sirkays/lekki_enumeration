@@ -440,6 +440,7 @@ def api_properties(request):
     street_name = request.GET.get('street_name', '').strip()
     status_filter = request.GET.get('status', '').strip()
     search_query = request.GET.get('q', '').strip()
+    completeness = request.GET.get('completeness', '').strip()
 
     qs = LekkiEnumeration.objects.exclude(
         Q(latitude__isnull=True) | Q(longitude__isnull=True)
@@ -453,6 +454,9 @@ def api_properties(request):
 
     if street_name:
         qs = qs.filter(street_name__icontains=street_name)
+        
+    if completeness:
+        qs = qs.filter(completeness_status__iexact=completeness)
 
     if search_query:
         qs = qs.filter(
