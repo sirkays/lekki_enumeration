@@ -782,6 +782,20 @@ async function fetchAndRenderProperties() {
 
   try {
     const res = await fetch(`${API_PROPERTIES}?${buildQueryString()}`);
+    
+    // Check if we were redirected to the login page (session expired)
+    if (res.redirected && res.url.includes('next=')) {
+      window.location.reload();
+      return;
+    }
+    
+    // Check for non-JSON responses (e.g. 500 HTML error pages)
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      window.location.reload();
+      return;
+    }
+
     const geojson = await res.json();
     renderMarkers(geojson);
     updateSidebarStats(geojson.meta);
@@ -1055,6 +1069,20 @@ async function fetchAndRenderCharts() {
 
   try {
     const res = await fetch(`${API_CHART}?year=${APP_STATE.selectedYear}`);
+    
+    // Check if we were redirected to the login page (session expired)
+    if (res.redirected && res.url.includes('next=')) {
+      window.location.reload();
+      return;
+    }
+    
+    // Check for non-JSON responses (e.g. 500 HTML error pages)
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      window.location.reload();
+      return;
+    }
+
     const data = await res.json();
     data._year = APP_STATE.selectedYear;
     APP_STATE.chartData = data;

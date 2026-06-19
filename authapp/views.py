@@ -124,16 +124,24 @@ def parse_routepay_json(response):
         return {"raw_response": response.text}
 
 
-def get_routepay_token():
-    cached_token = cache.get("routepay_access_token")
+def get_routepay_token(agency=""):
+    cache_key = f"routepay_access_token_{agency}" if agency else "routepay_access_token"
+    cached_token = cache.get(cache_key)
     if cached_token:
         return cached_token
 
     url = settings.ROUTEPAY_AUTH_URL
+    if agency.upper() == "ALPHACEN":
+        client_id = getattr(settings, "ALPHACEN_ROUTEPAY_CLIENT_ID", settings.ROUTEPAY_CLIENT_ID)
+        client_secret = getattr(settings, "ALPHACEN_ROUTEPAY_CLIENT_SECRET", settings.ROUTEPAY_CLIENT_SECRET)
+    else:
+        client_id = settings.ROUTEPAY_CLIENT_ID
+        client_secret = settings.ROUTEPAY_CLIENT_SECRET
+
     payload = {
         "grant_type": "client_credentials",
-        "client_id": settings.ROUTEPAY_CLIENT_ID,
-        "client_secret": settings.ROUTEPAY_CLIENT_SECRET,
+        "client_id": client_id,
+        "client_secret": client_secret,
     }
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -158,7 +166,7 @@ def get_routepay_token():
 
     expires_in = int(result.get("expires_in") or 900)
     cache_duration = max(expires_in - 60, 300)
-    cache.set("routepay_access_token", access_token, cache_duration)
+    cache.set(cache_key, access_token, cache_duration)
     return access_token
 
 
@@ -221,8 +229,8 @@ def get_routepay_payment_description(result):
     return ""
 
 
-def query_routepay_transaction(transaction_reference):
-    token = get_routepay_token()
+def query_routepay_transaction(transaction_reference, agency=""):
+    token = get_routepay_token(agency)
     url = f"{settings.ROUTEPAY_BASE_URL}/payment/api/v1/Payment/GetTransaction/{transaction_reference}"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -257,6 +265,7 @@ def init_routepay_payment(request):
         return JsonResponse({"ok": False, "message": "Invalid JSON payload."}, status=400)
 
     payee_id = str(data.get("payeeId") or "").strip()
+    agency = str(data.get("agency") or "").strip()
     amount_raw = data.get("amount")
     email = str(data.get("email") or "no-reply@lera.ng").strip()
     phone = str(data.get("phone") or "").strip()
@@ -281,8 +290,13 @@ def init_routepay_payment(request):
     return_base_url = settings.ROUTEPAY_RETURN_URL.rstrip("/")
     return_url = f"{return_base_url}/{merchant_reference}/"
 
+    if agency.upper() == "ALPHACEN":
+        client_id = getattr(settings, "ALPHACEN_ROUTEPAY_CLIENT_ID", settings.ROUTEPAY_CLIENT_ID)
+    else:
+        client_id = settings.ROUTEPAY_CLIENT_ID
+
     routepay_payload = {
-        "merchantId": settings.ROUTEPAY_CLIENT_ID,
+        "merchantId": client_id,
         "returnUrl": return_url,
         "merchantReference": merchant_reference,
         "totalAmount": str(amount),
@@ -304,6 +318,9 @@ def init_routepay_payment(request):
         ],
     }
 
+    metadata = data.get("metadata") or {}
+    metadata["agency"] = agency
+
     transaction = RoutePayTransaction.objects.create(
         payee_id=payee_id,
         merchant_reference=merchant_reference,
@@ -311,11 +328,11 @@ def init_routepay_payment(request):
         customer_name=customer_name,
         customer_email=email,
         customer_phone=phone,
-        metadata=data.get("metadata") or {},
+        metadata=metadata,
     )
 
     try:
-        token = get_routepay_token()
+        token = get_routepay_token(agency)
 
         response = requests.post(
             f"{settings.ROUTEPAY_BASE_URL}/payment/api/v1/Payment/SetRequest",
@@ -383,7 +400,8 @@ def routepay_status(request, transaction_reference):
             transaction_reference=transaction_reference
         ).first()
 
-        response, result = query_routepay_transaction(transaction_reference)
+        agency = transaction.metadata.get("agency", "") if transaction and transaction.metadata else ""
+        response, result = query_routepay_transaction(transaction_reference, agency)
 
         if transaction:
             is_successful = save_routepay_status(transaction, response, result)
@@ -440,12 +458,13 @@ def routepay_return(request, merchant_reference=None):
         }
         return HttpResponseRedirect(f"{odoo_base_url}?{urlencode(params)}")
 
+    agency = transaction.metadata.get("agency", "") if transaction and transaction.metadata else ""
     is_successful = False
     last_exc = None
 
     for attempt in range(5):
         try:
-            response, result = query_routepay_transaction(transaction.transaction_reference)
+            response, result = query_routepay_transaction(transaction.transaction_reference, agency)
             is_successful = save_routepay_status(transaction, response, result)
 
             if is_successful:
