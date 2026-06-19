@@ -1029,6 +1029,13 @@
           }
         });
       }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const assessmentParam = urlParams.get('assessment');
+      if (assessmentParam && inputField && verifyButton) {
+        inputField.value = assessmentParam;
+        verifyButton.click();
+      }
     }
 
     if (document.readyState === "loading") {
