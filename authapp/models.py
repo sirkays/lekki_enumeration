@@ -147,6 +147,7 @@ class RoutePayTransaction(models.Model):
     raw_init_response = models.JSONField(default=dict, blank=True)
     raw_status_response = models.JSONField(default=dict, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
+    routepay_payload = models.JSONField(default=dict, blank=True)
 
     is_successful = models.BooleanField(default=False)
 

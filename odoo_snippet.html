@@ -781,16 +781,65 @@
           resultHTML += getPaymentFormHTML(FR);
         } else {
           resultHTML +=
-            '<div class="errorBox" aria-live="polite" role="alert">' +
+            '<div class="errorBox" aria-live="polite" role="alert" style="display:block; margin-top:20px;">' +
             "This record does not currently require payment based on the returned payment status." +
             "</div>";
         }
 
+        resultHTML += `
+          <div style="margin-top: 20px;">
+            <button class="cancel-verify-btn" type="button" style="width: 100%; min-height: 52px; border: 2px solid #ef4444; border-radius: 16px; background: #fef2f2; color: #b91c1c; font-size: 16px; font-weight: 800; cursor: pointer; transition: 0.25s ease; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.15);">
+              Cancel and try another assessment id
+            </button>
+          </div>
+        `;
+
         resultContainer.innerHTML = resultHTML;
 
-        if (!isUnpaid) return;
+        const widget = document.getElementById("lera-routepay-payment-widget");
+        const searchSection = widget.querySelector(".lera-payment-search");
+        if (searchSection) {
+            searchSection.style.display = "none";
+        }
+
+        const cancelBtn = resultContainer.querySelector(".cancel-verify-btn");
+        if (cancelBtn) {
+            cancelBtn.addEventListener("click", function() {
+                resultContainer.innerHTML = "";
+                if (searchSection) {
+                    searchSection.style.display = "block";
+                    setTimeout(() => {
+                        const y = searchSection.getBoundingClientRect().top + window.scrollY - 80;
+                        window.scrollTo({top: y, behavior: 'smooth'});
+                    }, 50);
+                }
+                const inputField = widget.querySelector(".verification-input");
+                if (inputField) inputField.value = "";
+
+                // Remove assessment parameter from URL if present
+                const url = new URL(window.location);
+                if (url.searchParams.has('assessment')) {
+                    url.searchParams.delete('assessment');
+                    window.history.pushState({}, '', url);
+                }
+            });
+        }
+
+        if (!isUnpaid) {
+            setTimeout(() => {
+                const y = resultContainer.getBoundingClientRect().top + window.scrollY + 80;
+                window.scrollTo({top: y, behavior: 'smooth'});
+            }, 50);
+            return;
+        }
 
         bindPaymentButton(FR, payeeId);
+        setTimeout(() => {
+            const formPanel = resultContainer.querySelector(".lera-payment-form-panel");
+            const targetElement = formPanel ? formPanel : resultContainer;
+            const y = targetElement.getBoundingClientRect().top + window.scrollY - 20; 
+            window.scrollTo({top: y, behavior: 'smooth'});
+        }, 50);
       }
 
       function detailItem(label, value) {
@@ -820,7 +869,8 @@
               <label class="lera-form-field">
                 <span class="lera-field-label">Amount</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputmode="numeric"
                   class="amount-input"
                   placeholder="Enter Amount to Pay"
                 />
@@ -905,7 +955,19 @@
         const phoneInput = resultContainer.querySelector(".phonenumber-input");
 
         if (amountInput) {
-          amountInput.value = normaliseAmount(FR.Amount) || "";
+          const val = normaliseAmount(FR.Amount);
+          amountInput.value = val ? Number(val).toLocaleString("en-US") : "";
+
+          amountInput.addEventListener("input", function(e) {
+            let rawVal = this.value.replace(/,/g, "").replace(/[^\d.]/g, "");
+            if (!rawVal) {
+              this.value = "";
+              return;
+            }
+            const parts = rawVal.split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            this.value = parts.join(".");
+          });
         }
 
         if (phoneInput && FR.PhoneNumber) {
@@ -952,13 +1014,13 @@
           paymentButton.innerHTML =
             "<span class='spinner'></span> Redirecting to payment...";
 
-          const customerName = FR.PayeeName || "";
           const email = emailInput.value.trim();
           const phone = phoneInput.value.trim();
           const firstName = firstnameInput.value.trim();
           const lastName = surnameInput.value.trim();
           const otherName = othernameInput ? othernameInput.value.trim() : "";
           const propertyAddress = addressInput.value.trim();
+          const customerName = FR.PayeeName || [firstName, otherName, lastName].filter(Boolean).join(" ");
 
           const paymentPayload = {
             payeeId: FR.PayeeID || payeeId,
@@ -969,8 +1031,8 @@
             currency: "NGN",
             email: email,
             phone: phone,
-            firstName: firstName || customerName.split(" ")[0] || "LERA",
-            lastName: lastName || "Payer",
+            firstName: firstName,
+            lastName: lastName,
             otherName: otherName,
             propertyAddress: propertyAddress,
             narration: "LERA levy payment - " + payeeId + " - " + customerName,

@@ -267,15 +267,25 @@ def init_routepay_payment(request):
     payee_id = str(data.get("payeeId") or "").strip()
     agency = str(data.get("agency") or "").strip()
     amount_raw = data.get("amount")
-    email = str(data.get("email") or "no-reply@lera.ng").strip()
+    email = str(data.get("email") or "").strip()
     phone = str(data.get("phone") or "").strip()
-    customer_name = str(data.get("payeeName") or "LERA Payer").strip()
+    customer_name = str(data.get("payeeName") or "").strip()
 
-    first_name = str(data.get("firstName") or customer_name.split(" ")[0] or "LERA").strip()
-    last_name = str(data.get("lastName") or "Payer").strip()
+    first_name = str(data.get("firstName") or "").strip()
+    last_name = str(data.get("lastName") or "").strip()
 
     if not payee_id:
         return JsonResponse({"ok": False, "message": "Payee ID is required."}, status=400)
+    if not email:
+        return JsonResponse({"ok": False, "message": "Email is required."}, status=400)
+    if not phone:
+        return JsonResponse({"ok": False, "message": "Phone number is required."}, status=400)
+    if not customer_name:
+        return JsonResponse({"ok": False, "message": "Payee name is required."}, status=400)
+    if not first_name:
+        return JsonResponse({"ok": False, "message": "First name is required."}, status=400)
+    if not last_name:
+        return JsonResponse({"ok": False, "message": "Last name is required."}, status=400)
 
     try:
         amount = Decimal(str(amount_raw))
@@ -329,6 +339,7 @@ def init_routepay_payment(request):
         customer_email=email,
         customer_phone=phone,
         metadata=metadata,
+        routepay_payload=routepay_payload,
     )
 
     try:
