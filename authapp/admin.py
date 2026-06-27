@@ -191,6 +191,8 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
         "transaction_reference",
         "payee_id",
         "customer_name",
+        "customer_email",
+        "agency",
         "formatted_amount",
         "status_badge",
         "is_successful",
@@ -201,6 +203,7 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
     list_filter = (
         "is_successful",
         "payment_status",
+        "agency",
         "currency",
         "created_at",
         "updated_at",
@@ -213,6 +216,9 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
         "customer_name",
         "customer_email",
         "customer_phone",
+        "first_name",
+        "last_name",
+        "agency",
         "payment_description",
     )
 
@@ -224,6 +230,7 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
         "pretty_metadata",
         "pretty_raw_init_response",
         "pretty_raw_status_response",
+        "pretty_routepay_payload",
     )
 
     date_hierarchy = "created_at"
@@ -246,6 +253,7 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
                     "payee_id",
                     "merchant_reference",
                     "transaction_reference",
+                    "agency",
                 )
             },
         ),
@@ -253,9 +261,13 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
             "Customer Information",
             {
                 "fields": (
+                    "first_name",
+                    "last_name",
+                    "other_name",
                     "customer_name",
                     "customer_email",
                     "customer_phone",
+                    "property_address",
                 )
             },
         ),
@@ -274,7 +286,16 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "RoutePay / Metadata",
+            "RoutePay Payload (Sent to RoutePay)",
+            {
+                "fields": (
+                    "pretty_routepay_payload",
+                ),
+                "description": "The exact JSON payload that was sent to RoutePay when this transaction was initiated.",
+            },
+        ),
+        (
+            "RoutePay Responses / Metadata",
             {
                 "classes": ("collapse",),
                 "fields": (
@@ -359,6 +380,11 @@ class RoutePayTransactionAdmin(admin.ModelAdmin):
         return self._pretty_json(obj.raw_status_response)
 
     pretty_raw_status_response.short_description = "RoutePay Status Response"
+
+    def pretty_routepay_payload(self, obj):
+        return self._pretty_json(obj.routepay_payload)
+
+    pretty_routepay_payload.short_description = "RoutePay Payload (JSON sent to RoutePay)"
 
     def _pretty_json(self, value):
         if not value:

@@ -982,21 +982,40 @@
         paymentButton.addEventListener("click", async function () {
           errorBox.textContent = "";
 
-          const requiredFields = [
-            amountInput,
-            emailInput,
-            surnameInput,
-            firstnameInput,
-            addressInput,
-            phoneInput
-          ];
+          const email = emailInput ? emailInput.value.trim() : "";
+          const phone = phoneInput ? phoneInput.value.trim() : "";
+          const firstName = firstnameInput ? firstnameInput.value.trim() : "";
+          const lastName = surnameInput ? surnameInput.value.trim() : "";
+          const otherName = othernameInput ? othernameInput.value.trim() : "";
+          const propertyAddress = addressInput ? addressInput.value.trim() : "";
+          const amountVal = amountInput ? amountInput.value.trim() : "";
 
-          const allFilled = requiredFields.every(function (field) {
-            return field && field.value && field.value.trim() !== "";
-          });
+          // ── Per-field validation with clear messages ──
+          var validationErrors = [];
 
-          if (!allFilled) {
-            showError(errorBox, "Please fill in all required fields before proceeding.");
+          if (!amountVal) {
+            validationErrors.push("Amount is required.");
+          }
+          if (!firstName) {
+            validationErrors.push("First name is required.");
+          }
+          if (!lastName) {
+            validationErrors.push("Surname is required.");
+          }
+          if (!phone) {
+            validationErrors.push("Phone number is required.");
+          }
+          if (!propertyAddress) {
+            validationErrors.push("Property address is required.");
+          }
+          if (!email) {
+            validationErrors.push("Email address is required.");
+          } else if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email)) {
+            validationErrors.push("'" + email + "' is not a valid email. Please enter a complete email (e.g. user@example.com).");
+          }
+
+          if (validationErrors.length > 0) {
+            showError(errorBox, validationErrors.join(" "));
             return;
           }
 
@@ -1014,13 +1033,7 @@
           paymentButton.innerHTML =
             "<span class='spinner'></span> Redirecting to payment...";
 
-          const email = emailInput.value.trim();
-          const phone = phoneInput.value.trim();
-          const firstName = firstnameInput.value.trim();
-          const lastName = surnameInput.value.trim();
-          const otherName = othernameInput ? othernameInput.value.trim() : "";
-          const propertyAddress = addressInput.value.trim();
-          const customerName = FR.PayeeName || [firstName, otherName, lastName].filter(Boolean).join(" ");
+          const customerName = [firstName, otherName, lastName].filter(Boolean).join(" ");
 
           const paymentPayload = {
             payeeId: FR.PayeeID || payeeId,

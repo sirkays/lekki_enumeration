@@ -140,6 +140,11 @@ class RoutePayTransaction(models.Model):
     customer_name = models.CharField(max_length=255, blank=True)
     customer_email = models.EmailField(blank=True)
     customer_phone = models.CharField(max_length=50, blank=True)
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    other_name = models.CharField(max_length=150, blank=True)
+    property_address = models.TextField(blank=True)
+    agency = models.CharField(max_length=100, blank=True)
 
     payment_status = models.IntegerField(blank=True, null=True)
     payment_description = models.CharField(max_length=100, blank=True)

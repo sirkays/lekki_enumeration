@@ -27,6 +27,7 @@ from .models import SessionToken, UserProfile, RoutePayTransaction
 from .serializers import CurrentUserSerializer
 
 import json
+import re
 import uuid
 from decimal import Decimal, InvalidOperation
 
@@ -273,27 +274,53 @@ def init_routepay_payment(request):
 
     first_name = str(data.get("firstName") or "").strip()
     last_name = str(data.get("lastName") or "").strip()
+    other_name = str(data.get("otherName") or "").strip()
+    property_address = str(data.get("propertyAddress") or "").strip()
+
+    # ── Collect all validation errors at once ──
+    EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
+    errors = []
 
     if not payee_id:
-        return JsonResponse({"ok": False, "message": "Payee ID is required."}, status=400)
-    if not email:
-        return JsonResponse({"ok": False, "message": "Email is required."}, status=400)
-    if not phone:
-        return JsonResponse({"ok": False, "message": "Phone number is required."}, status=400)
-    if not customer_name:
-        return JsonResponse({"ok": False, "message": "Payee name is required."}, status=400)
+        errors.append("Payee ID is required.")
     if not first_name:
-        return JsonResponse({"ok": False, "message": "First name is required."}, status=400)
+        errors.append("First name is required.")
     if not last_name:
-        return JsonResponse({"ok": False, "message": "Last name is required."}, status=400)
+        errors.append("Last name (surname) is required.")
+    if not email:
+        errors.append("Email address is required.")
+    elif not EMAIL_RE.match(email):
+        errors.append(f"'{email}' is not a valid email address. Please provide a complete email (e.g. user@example.com).")
+    if not phone:
+        errors.append("Phone number is required.")
+    if not property_address:
+        errors.append("Property address is required.")
 
-    try:
-        amount = Decimal(str(amount_raw))
-    except (InvalidOperation, TypeError):
-        return JsonResponse({"ok": False, "message": "Invalid amount."}, status=400)
+    # Amount validation
+    amount = None
+    if amount_raw is None or str(amount_raw).strip() == "":
+        errors.append("Amount is required.")
+    else:
+        try:
+            amount = Decimal(str(amount_raw))
+            if amount <= 0:
+                errors.append("Amount must be greater than zero.")
+        except (InvalidOperation, TypeError):
+            errors.append(f"'{amount_raw}' is not a valid amount.")
 
-    if amount <= 0:
-        return JsonResponse({"ok": False, "message": "Amount must be greater than zero."}, status=400)
+    if errors:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": " | ".join(errors),
+                "errors": errors,
+            },
+            status=400,
+        )
+
+    # Build customer_name from name fields if not explicitly provided
+    if not customer_name:
+        customer_name = " ".join(filter(None, [first_name, other_name, last_name]))
 
     merchant_reference = f"LERA-{payee_id}-{timezone.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
 
@@ -338,6 +365,11 @@ def init_routepay_payment(request):
         customer_name=customer_name,
         customer_email=email,
         customer_phone=phone,
+        first_name=first_name,
+        last_name=last_name,
+        other_name=other_name,
+        property_address=property_address,
+        agency=agency,
         metadata=metadata,
         routepay_payload=routepay_payload,
     )
