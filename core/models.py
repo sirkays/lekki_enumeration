@@ -43,8 +43,6 @@ class LekkiEnumeration(models.Model):
         managed = False
         db_table = 'lekki_enumeration'
 
-
-
 class BillDistribution(models.Model):
     # Link to the main enumeration record
     lekki_enum = models.ForeignKey(LekkiEnumeration, on_delete=models.CASCADE, related_name='bill_distributions')
@@ -64,8 +62,6 @@ class BillDistribution(models.Model):
 
     class Meta:
         db_table = 'bill_distribution_captures'
-        # Ensures an agent doesn't accidentally submit two bills for the exact same property in the same year
-        unique_together = ('lekki_enum', 'year') 
 
     def __str__(self):
         return f"{self.property_id} - {self.year}"
@@ -98,3 +94,5 @@ class PropertyComment(models.Model):
 
     def __str__(self):
         return f"Comment on {self.lekki_enum.property_id}"
+    
+

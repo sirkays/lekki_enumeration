@@ -190,6 +190,12 @@
     box-shadow: 0 0 0 4px rgba(31, 167, 154, 0.12);
   }
 
+  input[readonly] {
+    background-color: #f9fafb;
+    cursor: not-allowed;
+    color: var(--lera-pay-muted);
+  }
+
   .verify-button,
   .payment-btn {
     width: 100%;
@@ -873,6 +879,7 @@
                   inputmode="numeric"
                   class="amount-input"
                   placeholder="Enter Amount to Pay"
+                  readonly
                 />
               </label>
 

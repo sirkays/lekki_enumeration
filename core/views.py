@@ -128,7 +128,9 @@ def capture_bill(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if BillDistribution.objects.filter(lekki_enum=lekki_enum, year=year).exists():
+    force_upload = str(request.data.get('force_upload', '')).lower() == 'true'
+
+    if not force_upload and BillDistribution.objects.filter(lekki_enum=lekki_enum, year=year).exists():
         return Response(
             {"detail": f"A bill for {property_id} has already been distributed for {year}."},
             status=status.HTTP_409_CONFLICT,
