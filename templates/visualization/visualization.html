@@ -504,7 +504,7 @@
           <label class="section-label block mb-1.5">Completeness Status</label>
           <select id="filterCompleteness" class="filter-input" onchange="applyFilters()">
             <option value="">All</option>
-            <option value="complete">Complete</option>
+            <option value="complete" selected>Complete</option>
             <option value="incomplete">Incomplete</option>
             <option value="partial">Partial</option>
           </select>
@@ -686,7 +686,7 @@ const APP_STATE = {
   filterRevenue: '',
   filterStreet: '',
   filterFloors: 20,
-  filterCompleteness: '',
+  filterCompleteness: 'complete',
   isFullscreen: false,
   sidebarOpen: true,
   markers: [],
@@ -1275,13 +1275,13 @@ function resetFilters() {
   APP_STATE.filterType = '';
   APP_STATE.filterRevenue = '';
   APP_STATE.filterStreet = '';
-  APP_STATE.filterCompleteness = '';
+  APP_STATE.filterCompleteness = 'complete';
   APP_STATE.filterFloors = 20;
   APP_STATE.searchQuery = '';
   document.getElementById('filterType').value = '';
   document.getElementById('filterRevenue').value = '';
   document.getElementById('filterStreet').value = '';
-  document.getElementById('filterCompleteness').value = '';
+  document.getElementById('filterCompleteness').value = 'complete';
   document.getElementById('filterFloors').value = 20;
   document.getElementById('searchInput').value = '';
   document.getElementById('floorLabel').textContent = 'Any';
